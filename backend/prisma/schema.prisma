@@ -30,6 +30,7 @@ model EventType {
   description     String   @default("")
   durationMinutes Int
   slug            String
+  hidden          Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

@@ -338,18 +338,18 @@ Pre-PR security checklist (OWASP-aligned) will be enforced in CI and PR review.
 
 ```
 cal-clone/                    # Public GitHub repo
+├── frontend/                 # Next.js app
+├── backend/                  # Express + Prisma
+├── README.md                 # Setup + live URLs
 ├── .github/workflows/        # CI/CD pipelines
 ├── docs/
 │   ├── HLD.md               # This document
-│   ├── LLD.md               # Low-level design (next)
-│   ├── SCHEMA.md            # Schema design (next)
+│   ├── LLD.md               # Low-level design
+│   ├── SCHEMA.md            # Schema design
 │   ├── IMPLEMENTATION_GUIDE.md
 │   ├── API.md               # Per-feature API docs
 │   └── adr/                 # Architecture Decision Records
-├── frontend/                 # Next.js app
-├── backend/                  # Express + Prisma
-├── IMPLEMENTATION_PLAN.md    # One-day execution timeline
-└── README.md                 # Setup + live URLs
+└── .cursor/                  # Project rules (AI-assisted workflow)
 ```
 
 ---

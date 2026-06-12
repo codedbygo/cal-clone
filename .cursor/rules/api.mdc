@@ -1,0 +1,33 @@
+---
+description: Rules for all API route handlers
+globs: **/api/**/*.ts
+---
+
+# API Route Rules
+
+## Response Shape
+Every route must return this exact shape — no exceptions:
+```ts
+// Success
+{ data: T, error: null, message: string }
+
+// Failure
+{ data: null, error: string, message: string }
+```
+
+## Validation
+- Parse and validate every incoming request body with a **Zod schema** before touching the database
+- Return `400` with a descriptive error message on validation failure
+- Never trust client-supplied IDs without verifying they belong to the default user
+
+## Error Handling
+- Wrap all route logic in try/catch
+- Log errors to console in development
+- Never expose raw Prisma errors or stack traces to the client
+- Use appropriate HTTP status codes: `200`, `201`, `400`, `404`, `409`, `500`
+
+## Business Logic Rules
+- Check for booking conflicts before creating any booking (query overlapping time slots)
+- All times stored in the DB must be in **UTC**
+- Convert to the user's timezone only at the response/display layer
+- Cancellation must update booking status to `CANCELLED` — never hard delete bookings

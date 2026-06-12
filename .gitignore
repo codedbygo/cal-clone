@@ -24,3 +24,6 @@ npm-debug.log*
 docs/24_HOUR_SPRINT.md
 docs/TASK_SPLIT.md
 IMPLEMENTATION_PLAN.md
+
+# Per-module line-by-line code explanations — local study notes only
+docs/explanations/

@@ -76,9 +76,10 @@ cal-clone/
 │   ├── .env.example                   # committed
 │   └── package.json
 │
-├── docs/                              # HLD, LLD, SCHEMA, API, ADRs, guides
+├── README.md
 ├── .github/workflows/ci.yml
-└── README.md
+├── docs/                              # HLD, LLD, SCHEMA, API, ADRs, guides
+└── .cursor/                           # project rules
 ```
 
 **Rules:**

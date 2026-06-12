@@ -1,0 +1,35 @@
+---
+description: 
+globs: *
+alwaysApply: false
+---
+
+# Core Feature Rules
+
+## 1. Event Types
+- Each event type must have: title, description, duration (minutes), and a unique URL slug
+- Slug must be URL-safe: lowercase, hyphens only, no spaces — enforce with Zod regex
+- Duplicate slug must return a `409 Conflict` response
+- The public booking URL format is: `/[slug]`
+- Deleting an event type must not delete past bookings — keep them intact
+
+## 2. Availability
+- Available days are stored as an array of weekday indices (0 = Sunday … 6 = Saturday)
+- Start time and end time are stored as `HH:mm` strings (e.g. `"09:00"`, `"17:00"`)
+- Timezone is stored as an IANA timezone string (e.g. `"Asia/Kolkata"`)
+- When calculating available slots, always subtract already-booked slots
+- Slot generation: divide the available window into chunks equal to the event duration
+
+## 3. Public Booking Page
+- The booking page is fully public — no auth check
+- Calendar must disable past dates and dates with no available slots
+- Time slots must be displayed in the booker's local timezone (detect via `Intl.DateTimeFormat`)
+- Booking form collects: full name, email — both required
+- After successful booking, redirect to `/booking/confirmed?id=[bookingId]`
+- Confirmation page must show: event title, date, time, duration, and booker name
+
+## 4. Bookings Dashboard
+- Separate tabs for "Upcoming" and "Past" bookings — split by current UTC time
+- Each booking card shows: booker name, email, event title, date/time, and duration
+- Cancel button must ask for confirmation before calling the cancel API
+- Cancelled bookings should be visually distinct (muted, strikethrough, or a `CANCELLED` badge)

@@ -1,0 +1,68 @@
+---
+description: UI and design rules for all frontend components — must match Cal.com
+globs: **/*.tsx, **/*.jsx
+---
+
+# UI & Design Rules — Cal.com Clone
+
+## Non-negotiable
+Every screen must closely match **Cal.com** (https://cal.com) in layout, spacing, typography, and interaction patterns. Evaluators demo the booking flow first — visual similarity matters as much as functionality.
+
+Study Cal.com before building any UI. No generic dashboard aesthetics. No dev/debug copy in production UI.
+
+## Stack
+- **shadcn/ui** for primitives (Button, Calendar, Dialog, Input, Select) — never hand-roll primitives
+- **Tailwind CSS** only — no inline styles, no CSS modules
+- **lucide-react** for icons — one library only
+- **Inter** font (or Geist if already scaffolded) — `text-sm` body, clear hierarchy
+
+## Cal.com color & spacing
+- Page backgrounds: `bg-gray-50` (admin) / `bg-white` (public booking)
+- Cards: `bg-white border border-gray-200 rounded-lg`
+- Headings: `text-gray-900` · secondary: `text-gray-500` · muted: `text-gray-400`
+- Primary actions: dark/black button (`bg-gray-900 text-white hover:bg-gray-800`) — Cal.com uses near-black, not bright blue
+- Generous whitespace: `p-4` / `p-6` / `gap-4` / `gap-6`
+
+## Page-specific patterns (must implement)
+
+### Admin shell
+- Left sidebar: Event Types | Availability | Bookings
+- Active nav: `bg-gray-100 rounded-md font-medium` with icon + label
+- Top area: app name + host name
+- Content area on `bg-gray-50`
+
+### Event types (`/event-types`)
+- Card list (not a plain table)
+- Each card: **colored dot** accent, **duration badge** (e.g. `30m`), title, slug subtitle
+- Hover reveals copy-link / edit / delete actions
+- "New event type" as primary dark button
+
+### Availability (`/availability`)
+- Timezone select at top
+- **7-row weekly grid**: toggle per day + start/end time inputs (`09:00`–`17:00`)
+- Not free-text — structured time pickers
+
+### Public booking (`/book/[slug]`) — highest priority
+- **3-column layout** on desktop:
+  1. **Left** — host avatar/name, event title, duration, description
+  2. **Middle** — month calendar (react-day-picker / shadcn Calendar)
+  3. **Right** — time slot buttons (12h format, e.g. `9:00 AM`), then inline name/email form on slot select
+- Dividers between columns (`border-r border-gray-200`)
+- Mobile: stack columns vertically (info → calendar → slots)
+- Slot buttons: full-width outline, `hover:border-gray-900`
+- Confirmation page: summary card with date, time, event details
+
+### Bookings dashboard (`/bookings`)
+- Tabs: Upcoming | Past
+- Clean table or list rows with cancel on upcoming confirmed
+
+## Interaction rules
+- All async buttons show loading state (spinner or disabled)
+- Empty states: helpful message + CTA — never blank screens
+- Forms: field-level validation errors
+- 409 slot-taken: user-friendly message + refresh slots
+- No placeholder text like "Module 1.6" or "connected to API" in UI
+
+## Responsive
+- Mobile-first; booking page must work on phone
+- Sidebar → collapsible/hamburger on small screens

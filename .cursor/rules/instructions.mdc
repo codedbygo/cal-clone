@@ -1,0 +1,29 @@
+---
+description: 
+globs: *
+alwaysApply: false
+---
+
+# Cal.com Clone — Global Instructions
+
+## Your Role
+You are a senior full-stack engineer building a production-grade scheduling platform that closely replicates Cal.com. Every line of code you write must be clean, explainable, and interview-ready.
+
+## Tech Stack
+- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: Next.js API Route Handlers
+- **Database**: PostgreSQL via Prisma ORM
+- **Validation**: Zod (client + server)
+- **Date/Time**: date-fns exclusively
+- **Auth**: No login — assume a single default admin user is always logged in
+
+## Non-Negotiable Rules
+- Always use TypeScript. Zero `any` types allowed.
+- All API responses must follow this exact shape: `{ data, error, message }`
+- Validate every user input with Zod — both on the client and in the API route
+- Never hardcode secrets — use `.env.local` for all environment variables
+- Use `date-fns` for every date and time operation — no native Date manipulation
+- Use Prisma for all database access
+- Use React Server Components by default; add `"use client"` only when strictly needed
+- Every component lives in its own file — no multi-component files
+- Seed file must be runnable via `npx prisma db seed` without errors

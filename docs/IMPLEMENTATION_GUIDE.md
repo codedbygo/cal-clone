@@ -34,8 +34,9 @@ No local PostgreSQL or Docker needed — Neon is used for dev and prod (separate
 cal-clone/            # monorepo, one public GitHub repo
 ├── frontend/         # Next.js 14 — Vercel project 1
 ├── backend/          # Express + Prisma — Vercel project 2
+├── .github/workflows # CI
 ├── docs/             # all design docs + ADRs
-└── .github/workflows # CI
+└── .cursor/          # project rules
 ```
 
 Full file tree: [LLD.md §1](./LLD.md#1-folder-structure-definitive).

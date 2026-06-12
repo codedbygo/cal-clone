@@ -1,0 +1,32 @@
+---
+description: 
+globs: **/*.ts, **/*.tsx
+alwaysApply: false
+---
+
+# Code Quality Rules
+
+## TypeScript
+- No `any` — use `unknown` and narrow it, or define a proper type/interface
+- Define all shared types in dedicated type files — never inline complex types in components
+- Use `type` for object shapes, `interface` for extendable contracts
+- Prefer explicit return types on all functions and API handlers
+
+## React
+- Prefer React Server Components — only add `"use client"` when you need state, effects, or browser APIs
+- Never fetch data inside a `useEffect` — use Server Components or React Query / SWR
+- Always handle loading and error states in every data-fetching component
+- Avoid prop drilling more than 2 levels — use context or co-locate state
+
+## Naming Conventions
+- Components: `PascalCase` (e.g. `BookingCard.tsx`)
+- Hooks: `camelCase` starting with `use` (e.g. `useAvailableSlots.ts`)
+- API route files: `route.ts` inside descriptive folders
+- Constants: `SCREAMING_SNAKE_CASE`
+- Zod schemas: suffix with `Schema` (e.g. `createEventSchema`)
+
+## General
+- No commented-out code in commits
+- No `console.log` left in production code — use a `isDev` guard if needed
+- Keep functions small and single-purpose — if it needs a comment to explain what it does, break it up
+- Reuse — if you write the same logic twice, extract it into a util or hook
