@@ -1,0 +1,96 @@
+// Cal.com Clone — database schema
+// Design rationale: docs/SCHEMA.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Neon pooled connection (?pgbouncer=true)
+  directUrl = env("DIRECT_URL") // Neon direct connection — migrations only
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String   @default("Default Host")
+  email     String   @unique
+  // Display default only; AvailabilitySchedule.timezone is authoritative for slot math
+  timezone  String   @default("America/New_York")
+  createdAt DateTime @default(now())
+
+  eventTypes EventType[]
+  schedule   AvailabilitySchedule?
+}
+
+model EventType {
+  id              String   @id @default(cuid())
+  userId          String
+  title           String
+  description     String   @default("")
+  durationMinutes Int
+  slug            String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  // Slugs unique per host, not globally — correct multi-tenant modelling
+  @@unique([userId, slug])
+}
+
+model AvailabilitySchedule {
+  id        String   @id @default(cuid())
+  // Unique FK = exactly one schedule per user in v1.
+  // "Multiple schedules" bonus: drop unique, add name, FK from EventType.
+  userId    String   @unique
+  // Authoritative timezone: rule HH:mm values are wall-clock in this zone
+  timezone  String   @default("America/New_York")
+  updatedAt DateTime @updatedAt
+
+  user  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rules AvailabilityRule[]
+}
+
+model AvailabilityRule {
+  id         String @id @default(cuid())
+  scheduleId String
+  // 0=Sunday ... 6=Saturday (JS Date.getDay() convention)
+  dayOfWeek  Int
+  // "HH:mm" wall-clock strings, NOT timestamps: recurring weekly values
+  // must survive DST — converted to UTC per-date by the slot engine
+  startTime  String
+  endTime    String
+
+  schedule AvailabilitySchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  // One continuous window per weekday (v1); absent day = unavailable
+  @@unique([scheduleId, dayOfWeek])
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  eventTypeId   String
+  attendeeName  String
+  attendeeEmail String
+  // UTC instants; endTime denormalized (start + duration) so the
+  // overlap check needs no join
+  startTime     DateTime
+  endTime       DateTime
+  // Soft cancel: CANCELLED rows stay for history and free the slot
+  status        BookingStatus @default(CONFIRMED)
+  createdAt     DateTime      @default(now())
+
+  eventType EventType @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+
+  // Hot path: overlap check + per-date slot queries
+  @@index([eventTypeId, startTime])
+  // Dashboard upcoming/past filters
+  @@index([startTime, status])
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+}

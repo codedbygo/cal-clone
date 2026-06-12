@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment files — never commit secrets
+.env
+.env.local
+.env*.local
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Internal planning docs — not part of the public submission
+docs/24_HOUR_SPRINT.md
+docs/TASK_SPLIT.md
+IMPLEMENTATION_PLAN.md
