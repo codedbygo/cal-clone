@@ -1,31 +1,174 @@
 import { Router } from "express";
-import {
-  addDays,
-  endOfMonth,
-  format,
-  parseISO,
-  startOfMonth,
-} from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import prisma from "../lib/db";
 import { getDefaultUserId } from "../lib/constants";
 import { ApiError } from "../middleware/errorHandler";
-import { generateSlots } from "../services/slots";
+import {
+  computeDaySlots,
+  computeMonthAvailability,
+  monthRangeUtc,
+} from "../services/availability";
 
 const router = Router();
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_RE = /^\d{4}-\d{2}$/;
+const BOOTSTRAP_CACHE_TTL_MS = 5 * 60_000;
 
-async function loadEventType(slug: string, preview: boolean) {
+const bootstrapCache = new Map<
+  string,
+  { body: Record<string, unknown>; expires: number }
+>();
+
+async function loadEventWithSchedule(slug: string, preview: boolean) {
   const userId = await getDefaultUserId();
   const eventType = await prisma.eventType.findUnique({
     where: { userId_slug: { userId, slug } },
+    include: {
+      user: {
+        select: {
+          name: true,
+          email: true,
+          schedule: { include: { rules: true } },
+        },
+      },
+    },
   });
   if (!eventType || (eventType.hidden && !preview)) {
     throw new ApiError(404, "NOT_FOUND", "Event type not found");
   }
   return eventType;
 }
+
+async function loadEventForBootstrap(slug: string, preview: boolean) {
+  const userId = await getDefaultUserId();
+  const eventType = await prisma.eventType.findUnique({
+    where: { userId_slug: { userId, slug } },
+    include: {
+      user: {
+        select: {
+          name: true,
+          email: true,
+          schedule: { include: { rules: true } },
+        },
+      },
+      bookings: {
+        where: { status: "CONFIRMED" },
+        select: { startTime: true, endTime: true },
+      },
+    },
+  });
+  if (!eventType || (eventType.hidden && !preview)) {
+    throw new ApiError(404, "NOT_FOUND", "Event type not found");
+  }
+  return eventType;
+}
+
+function eventPayload(
+  eventType: Awaited<ReturnType<typeof loadEventForBootstrap>>,
+) {
+  return {
+    id: eventType.id,
+    userId: eventType.userId,
+    title: eventType.title,
+    description: eventType.description,
+    durationMinutes: eventType.durationMinutes,
+    slug: eventType.slug,
+    hidden: eventType.hidden,
+    createdAt: eventType.createdAt,
+    updatedAt: eventType.updatedAt,
+    user: {
+      name: eventType.user.name,
+      email: eventType.user.email,
+    },
+  };
+}
+
+export function invalidateBootstrapCache() {
+  bootstrapCache.clear();
+}
+
+// GET /api/slots/bootstrap — one round-trip: month dates + all day slots
+router.get("/bootstrap", async (req, res, next) => {
+  try {
+    const slug = req.query.slug;
+    const month = req.query.month;
+    const preview = req.query.preview === "1";
+
+    if (typeof slug !== "string" || !slug) {
+      throw new ApiError(400, "VALIDATION", "slug: required");
+    }
+    if (typeof month !== "string" || !MONTH_RE.test(month)) {
+      throw new ApiError(400, "VALIDATION", "month: must be YYYY-MM");
+    }
+
+    const cacheKey = `${slug}:${month}:${preview}`;
+    const cached = bootstrapCache.get(cacheKey);
+    if (cached && cached.expires > Date.now()) {
+      return res.json(cached.body);
+    }
+
+    const eventType = await loadEventForBootstrap(slug, preview);
+    const schedule = eventType.user.schedule;
+
+    if (!schedule) {
+      const body = {
+        event: eventPayload(eventType),
+        timezone: "Asia/Kolkata",
+        availableDates: [],
+        selectedDate: null,
+        slots: [],
+        slotsByDate: {},
+      };
+      bootstrapCache.set(cacheKey, {
+        body,
+        expires: Date.now() + BOOTSTRAP_CACHE_TTL_MS,
+      });
+      return res.json(body);
+    }
+
+    const { rangeStart, rangeEnd } = monthRangeUtc(month, schedule.timezone);
+    const bookings = eventType.bookings.filter(
+      (b) => b.startTime < rangeEnd && b.endTime > rangeStart,
+    );
+
+    const availableDates = computeMonthAvailability({
+      month,
+      durationMinutes: eventType.durationMinutes,
+      timezone: schedule.timezone,
+      rules: schedule.rules,
+      bookings,
+    });
+
+    const slotsByDate: Record<string, ReturnType<typeof computeDaySlots>> = {};
+    for (const dateStr of availableDates) {
+      slotsByDate[dateStr] = computeDaySlots({
+        date: dateStr,
+        durationMinutes: eventType.durationMinutes,
+        timezone: schedule.timezone,
+        rules: schedule.rules,
+        bookings,
+      });
+    }
+
+    const selectedDate = availableDates[0] ?? null;
+    const slots = selectedDate ? (slotsByDate[selectedDate] ?? []) : [];
+
+    const body = {
+      event: eventPayload(eventType),
+      timezone: schedule.timezone,
+      availableDates,
+      selectedDate,
+      slots,
+      slotsByDate,
+    };
+    bootstrapCache.set(cacheKey, {
+      body,
+      expires: Date.now() + BOOTSTRAP_CACHE_TTL_MS,
+    });
+    res.json(body);
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.get("/", async (req, res, next) => {
   try {
@@ -38,64 +181,32 @@ router.get("/", async (req, res, next) => {
       throw new ApiError(400, "VALIDATION", "slug: required");
     }
 
-    const eventType = await loadEventType(slug, preview);
+    const eventType = await loadEventWithSchedule(slug, preview);
+    const schedule = eventType.user.schedule;
 
     if (typeof month === "string" && MONTH_RE.test(month)) {
-      const schedule = await prisma.availabilitySchedule.findUnique({
-        where: { userId: eventType.userId },
-        include: { rules: true },
-      });
       if (!schedule) {
-        return res.json({ availableDates: [], timezone: "UTC" });
+        return res.json({ availableDates: [], timezone: "Asia/Kolkata" });
       }
 
-      const monthStart = parseISO(`${month}-01`);
-      const monthEnd = endOfMonth(monthStart);
-      const availableDates: string[] = [];
+      const { rangeStart, rangeEnd } = monthRangeUtc(month, schedule.timezone);
+      const bookings = await prisma.booking.findMany({
+        where: {
+          eventTypeId: eventType.id,
+          status: "CONFIRMED",
+          startTime: { lt: rangeEnd },
+          endTime: { gt: rangeStart },
+        },
+        select: { startTime: true, endTime: true },
+      });
 
-      for (
-        let day = startOfMonth(monthStart);
-        day <= monthEnd;
-        day = addDays(day, 1)
-      ) {
-        const dateStr = format(day, "yyyy-MM-dd");
-        const noonUtc = fromZonedTime(`${dateStr}T12:00:00`, schedule.timezone);
-        const dayOfWeek = toZonedTime(noonUtc, schedule.timezone).getDay();
-        const rule =
-          schedule.rules.find((r) => r.dayOfWeek === dayOfWeek) ?? null;
-        if (!rule) continue;
-
-        const dayStart = fromZonedTime(
-          `${dateStr}T00:00:00`,
-          schedule.timezone,
-        );
-        const dayEnd = fromZonedTime(
-          `${dateStr}T23:59:59`,
-          schedule.timezone,
-        );
-
-        const bookings = await prisma.booking.findMany({
-          where: {
-            eventTypeId: eventType.id,
-            status: "CONFIRMED",
-            startTime: { lt: dayEnd },
-            endTime: { gt: dayStart },
-          },
-          select: { startTime: true, endTime: true },
-        });
-
-        const slots = generateSlots({
-          date: dateStr,
-          durationMinutes: eventType.durationMinutes,
-          timezone: schedule.timezone,
-          rule: { startTime: rule.startTime, endTime: rule.endTime },
-          bookings,
-        });
-
-        if (slots.length > 0) {
-          availableDates.push(dateStr);
-        }
-      }
+      const availableDates = computeMonthAvailability({
+        month,
+        durationMinutes: eventType.durationMinutes,
+        timezone: schedule.timezone,
+        rules: schedule.rules,
+        bookings,
+      });
 
       return res.json({
         availableDates,
@@ -107,37 +218,30 @@ router.get("/", async (req, res, next) => {
       throw new ApiError(400, "VALIDATION", "date: must be YYYY-MM-DD");
     }
 
-    const schedule = await prisma.availabilitySchedule.findUnique({
-      where: { userId: eventType.userId },
-      include: { rules: true },
-    });
     if (!schedule) {
-      return res.json({ slots: [] });
+      return res.json({ slots: [], timezone: "Asia/Kolkata" });
     }
 
-    const noonUtc = fromZonedTime(`${date}T12:00:00`, schedule.timezone);
-    const dayOfWeek = toZonedTime(noonUtc, schedule.timezone).getDay();
-    const rule =
-      schedule.rules.find((r) => r.dayOfWeek === dayOfWeek) ?? null;
-
-    const dayStart = fromZonedTime(`${date}T00:00:00`, schedule.timezone);
-    const dayEnd = fromZonedTime(`${date}T23:59:59`, schedule.timezone);
+    const { rangeStart, rangeEnd } = monthRangeUtc(
+      date.slice(0, 7),
+      schedule.timezone,
+    );
 
     const bookings = await prisma.booking.findMany({
       where: {
         eventTypeId: eventType.id,
         status: "CONFIRMED",
-        startTime: { lt: dayEnd },
-        endTime: { gt: dayStart },
+        startTime: { lt: rangeEnd },
+        endTime: { gt: rangeStart },
       },
       select: { startTime: true, endTime: true },
     });
 
-    const slots = generateSlots({
+    const slots = computeDaySlots({
       date,
       durationMinutes: eventType.durationMinutes,
       timezone: schedule.timezone,
-      rule: rule ? { startTime: rule.startTime, endTime: rule.endTime } : null,
+      rules: schedule.rules,
       bookings,
     });
 

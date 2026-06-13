@@ -89,7 +89,7 @@ export function EventTypeRow({
         </button>
 
         <a
-          href={`${bookingPath}?preview=1`}
+          href={event.hidden ? `${bookingPath}?preview=1` : bookingPath}
           target="_blank"
           rel="noopener noreferrer"
           className="rounded-md p-2 text-[var(--cal-muted)] hover:bg-[var(--cal-active)] hover:text-white"

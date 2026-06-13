@@ -22,6 +22,7 @@ interface Props {
   month: Date;
   selected: Date | null;
   availableDates: Set<string>;
+  loading?: boolean;
   onMonthChange: (month: Date) => void;
   onSelect: (date: Date) => void;
 }
@@ -30,6 +31,7 @@ export function BookingCalendar({
   month,
   selected,
   availableDates,
+  loading = false,
   onMonthChange,
   onSelect,
 }: Props) {
@@ -68,6 +70,12 @@ export function BookingCalendar({
         </div>
       </div>
 
+      {loading && (
+        <p className="mb-3 text-center text-xs text-[#6b7280]">
+          Loading availability…
+        </p>
+      )}
+
       <div className="grid grid-cols-7 gap-y-1">
         {WEEKDAYS.map((d) => (
           <div
@@ -84,7 +92,11 @@ export function BookingCalendar({
           const available = availableDates.has(dateKey);
           const isSelected = selected ? isSameDay(day, selected) : false;
           const past = isBefore(day, today);
-          const disabled = !inMonth || !available || past;
+          const weekday = day.getDay();
+          const isWeekday = weekday >= 1 && weekday <= 5;
+          const disabled =
+            !inMonth || past || (!loading && !available);
+          const pending = loading && inMonth && !past && isWeekday;
 
           return (
             <div key={dateKey} className="flex justify-center py-0.5">
@@ -95,17 +107,20 @@ export function BookingCalendar({
                 className={cn(
                   "relative flex h-10 w-10 items-center justify-center rounded-lg text-sm transition-colors",
                   !inMonth && "invisible",
+                  pending && "animate-pulse bg-[#2a2a2a]/60 text-[#9ca3af]",
                   isSelected &&
                     "bg-white font-semibold text-black hover:bg-white",
                   !isSelected &&
+                    !pending &&
                     available &&
                     !past &&
                     "bg-[#2a2a2a] text-white hover:bg-[#3a3a3a]",
                   !isSelected &&
+                    !pending &&
                     (!available || past) &&
                     inMonth &&
                     "text-[#6b7280]",
-                  disabled && "cursor-default",
+                  disabled && !pending && "cursor-default",
                 )}
               >
                 {isToday(day) && !isSelected && (

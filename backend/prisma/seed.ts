@@ -5,9 +5,9 @@ import { fromZonedTime } from "date-fns-tz";
 
 const prisma = new PrismaClient();
 
-const TZ = "America/New_York";
+const TZ = "Asia/Kolkata";
 
-// "10:00 on <date> in New York" → the exact UTC instant, DST-safe.
+// "10:00 on <date> in IST" → the exact UTC instant (Hyderabad uses Asia/Kolkata).
 function slotUtc(day: Date, time: string, durationMinutes: number) {
   const start = fromZonedTime(`${format(day, "yyyy-MM-dd")}T${time}:00`, TZ);
   const end = new Date(start.getTime() + durationMinutes * 60_000);
@@ -20,9 +20,9 @@ function slotUtc(day: Date, time: string, durationMinutes: number) {
 async function main() {
   const user = await prisma.user.upsert({
     where: { email: "host@example.com" },
-    update: {},
+    update: { name: "Savitha Sista", timezone: TZ },
     create: {
-      name: "Default Host",
+      name: "Savitha Sista",
       email: "host@example.com",
       timezone: TZ,
     },

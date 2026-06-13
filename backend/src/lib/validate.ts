@@ -43,3 +43,38 @@ export function validateHidden(hidden: unknown): boolean {
   if (typeof hidden !== "boolean") invalid("hidden: must be a boolean");
   return hidden;
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function validateAttendeeName(name: unknown): string {
+  if (typeof name !== "string") invalid("attendeeName: must be a string");
+  const n = name.trim();
+  if (n.length < 1 || n.length > 100) {
+    invalid("attendeeName: must be 1–100 characters");
+  }
+  return n;
+}
+
+export function validateAttendeeEmail(email: unknown): string {
+  if (typeof email !== "string") invalid("attendeeEmail: must be a string");
+  const e = email.trim().toLowerCase();
+  if (!EMAIL_RE.test(e) || e.length > 254) {
+    invalid("attendeeEmail: must be a valid email address");
+  }
+  return e;
+}
+
+export function validateBookingStartTime(startTime: unknown): Date {
+  if (typeof startTime !== "string") invalid("startTime: must be an ISO datetime string");
+  const d = new Date(startTime);
+  if (Number.isNaN(d.getTime())) invalid("startTime: must be a valid ISO datetime");
+  if (d <= new Date()) invalid("startTime: must be in the future");
+  return d;
+}
+
+export function validateEventTypeId(eventTypeId: unknown): string {
+  if (typeof eventTypeId !== "string" || !eventTypeId.trim()) {
+    invalid("eventTypeId: required");
+  }
+  return eventTypeId.trim();
+}
