@@ -1,22 +1,11 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { addDays, format, nextMonday } from "date-fns";
-import { fromZonedTime } from "date-fns-tz";
-
 const prisma = new PrismaClient();
 
 const TZ = "Asia/Kolkata";
 
-// "10:00 on <date> in IST" → the exact UTC instant (Hyderabad uses Asia/Kolkata).
-function slotUtc(day: Date, time: string, durationMinutes: number) {
-  const start = fromZonedTime(`${format(day, "yyyy-MM-dd")}T${time}:00`, TZ);
-  const end = new Date(start.getTime() + durationMinutes * 60_000);
-  return { start, end };
-}
-
-// Idempotent: users/event types/schedule upsert by unique keys;
-// bookings are wiped and recreated so their relative dates
-// (upcoming vs past) stay correct no matter when seeding runs.
+// Idempotent: users/event types/schedule upsert by unique keys.
+// Bookings are not seeded — they come only from the public booking flow.
 async function main() {
   const user = await prisma.user.upsert({
     where: { email: "host@example.com" },
@@ -28,7 +17,7 @@ async function main() {
     },
   });
 
-  const thirtyMin = await prisma.eventType.upsert({
+  await prisma.eventType.upsert({
     where: { userId_slug: { userId: user.id, slug: "30-min" } },
     update: {},
     create: {
@@ -40,7 +29,7 @@ async function main() {
     },
   });
 
-  const introCall = await prisma.eventType.upsert({
+  await prisma.eventType.upsert({
     where: { userId_slug: { userId: user.id, slug: "intro-call" } },
     update: { hidden: true },
     create: {
@@ -81,47 +70,6 @@ async function main() {
       startTime: "09:00",
       endTime: "17:00",
     })),
-  });
-
-  // Bookings: 1 upcoming confirmed, 1 past confirmed, 1 past cancelled —
-  // all on Mondays inside the 9–5 window so they match availability.
-  await prisma.booking.deleteMany({});
-
-  const upcomingMonday = nextMonday(new Date());
-  const lastMonday = addDays(upcomingMonday, -7);
-  const twoMondaysAgo = addDays(upcomingMonday, -14);
-
-  const upcoming = slotUtc(upcomingMonday, "10:00", thirtyMin.durationMinutes);
-  const pastDone = slotUtc(lastMonday, "11:00", thirtyMin.durationMinutes);
-  const pastCancelled = slotUtc(twoMondaysAgo, "15:00", introCall.durationMinutes);
-
-  await prisma.booking.createMany({
-    data: [
-      {
-        eventTypeId: thirtyMin.id,
-        attendeeName: "Asha Rao",
-        attendeeEmail: "asha@example.com",
-        startTime: upcoming.start,
-        endTime: upcoming.end,
-        status: "CONFIRMED",
-      },
-      {
-        eventTypeId: thirtyMin.id,
-        attendeeName: "Vikram Shetty",
-        attendeeEmail: "vikram@example.com",
-        startTime: pastDone.start,
-        endTime: pastDone.end,
-        status: "CONFIRMED",
-      },
-      {
-        eventTypeId: introCall.id,
-        attendeeName: "Meera Iyer",
-        attendeeEmail: "meera@example.com",
-        startTime: pastCancelled.start,
-        endTime: pastCancelled.end,
-        status: "CANCELLED",
-      },
-    ],
   });
 
   const counts = {

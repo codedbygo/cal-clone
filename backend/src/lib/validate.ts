@@ -78,3 +78,21 @@ export function validateEventTypeId(eventTypeId: unknown): string {
   }
   return eventTypeId.trim();
 }
+
+export function validateBookingFilter(
+  filter: unknown,
+): "upcoming" | "past" | "cancelled" {
+  if (filter === undefined || filter === null || filter === "upcoming") {
+    return "upcoming";
+  }
+  if (filter === "past") return "past";
+  if (filter === "cancelled") return "cancelled";
+  invalid('filter: must be "upcoming", "past", or "cancelled"');
+}
+
+export function validateBookingStatus(status: unknown): "CANCELLED" {
+  if (status !== "CANCELLED") {
+    invalid('status: must be "CANCELLED"');
+  }
+  return "CANCELLED";
+}

@@ -1,18 +1,38 @@
-import { Clock, Globe, Video } from "lucide-react";
+import { Calendar, Clock, Globe, Video } from "lucide-react";
 import type { EventTypeWithHost } from "@/lib/types";
+import { formatBookingSlotSummary } from "@/lib/utils";
 
 interface Props {
   event: EventTypeWithHost;
   timezone: string;
+  /** When set, shows the selected slot date/time (form step). */
+  selectedDayLabel?: string;
+  selectedStartTime?: string;
+  selectedEndTime?: string;
 }
 
-export function BookingEventInfo({ event, timezone }: Props) {
+export function BookingEventInfo({
+  event,
+  timezone,
+  selectedDayLabel,
+  selectedStartTime,
+  selectedEndTime,
+}: Props) {
   const initials = event.user.name
     .split(" ")
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  const slotSummary =
+    selectedDayLabel && selectedStartTime && selectedEndTime
+      ? formatBookingSlotSummary(
+          selectedDayLabel,
+          selectedStartTime,
+          selectedEndTime,
+        )
+      : null;
 
   return (
     <div className="flex flex-col p-6 lg:p-8">
@@ -28,6 +48,12 @@ export function BookingEventInfo({ event, timezone }: Props) {
       </h1>
 
       <div className="mt-4 space-y-3">
+        {slotSummary && (
+          <div className="flex items-start gap-2 text-sm text-[#9ca3af]">
+            <Calendar className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{slotSummary}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2 text-sm text-[#9ca3af]">
           <Clock className="h-4 w-4 shrink-0" />
           <span>{event.durationMinutes}m</span>
@@ -42,7 +68,7 @@ export function BookingEventInfo({ event, timezone }: Props) {
         </div>
       </div>
 
-      {event.description && (
+      {event.description && !slotSummary && (
         <p className="mt-6 text-sm leading-relaxed text-[#9ca3af]">
           {event.description}
         </p>

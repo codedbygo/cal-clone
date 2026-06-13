@@ -63,9 +63,19 @@ export interface BookingWithEvent extends Booking {
     title: string;
     durationMinutes: number;
     slug: string;
-    user: { name: string };
+    user: { name: string; email?: string };
   };
 }
+
+export interface BookingListItem extends Booking {
+  eventType: {
+    title: string;
+    durationMinutes: number;
+    slug: string;
+  };
+}
+
+export type BookingFilter = "upcoming" | "past" | "cancelled";
 
 export interface CreateBookingInput {
   eventTypeId: string;

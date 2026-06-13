@@ -3,20 +3,54 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Check, Calendar, Clock, Mail, User } from "lucide-react";
+import { Check, ChevronLeft, ExternalLink } from "lucide-react";
 import { getBooking } from "@/lib/api";
 import type { BookingWithEvent } from "@/lib/types";
+import {
+  formatBookingDate,
+  formatBookingTimeRange,
+  getCalVideoPath,
+} from "@/lib/utils";
 
-function formatLocalTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  });
+function DetailRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-[5rem_1fr] sm:gap-6">
+      <span className="text-sm text-[#6b7280]">{label}</span>
+      <div className="text-sm text-white">{children}</div>
+    </div>
+  );
+}
+
+function PersonLine({
+  name,
+  email,
+  badge,
+  badgeClass,
+}: {
+  name: string;
+  email: string;
+  badge: string;
+  badgeClass: string;
+}) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-medium">{name}</span>
+        <span
+          className={`rounded px-1.5 py-0.5 text-xs font-medium ${badgeClass}`}
+        >
+          {badge}
+        </span>
+      </div>
+      <p className="mt-0.5 text-[#9ca3af]">{email}</p>
+    </div>
+  );
 }
 
 function ConfirmedContent() {
@@ -59,48 +93,79 @@ function ConfirmedContent() {
   }
 
   const { eventType } = booking;
+  const host = eventType.user;
+  const bookUrl = `/book/${eventType.slug}`;
+  const videoPath = getCalVideoPath(booking.id);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#101010] px-4 py-12 text-white">
-      <div className="w-full max-w-md rounded-2xl border border-[#2a2a2a] bg-[#101010] p-8 shadow-2xl">
-        <div className="flex flex-col items-center text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15">
-            <Check className="h-7 w-7 text-emerald-400" strokeWidth={2.5} />
-          </div>
-          <h1 className="mt-5 text-xl font-semibold">Booking confirmed</h1>
-          <p className="mt-1 text-sm text-[#9ca3af]">
-            You are scheduled with {eventType.user.name}
-          </p>
-        </div>
+    <div className="min-h-screen bg-[#101010] text-white">
+      <div className="px-6 py-4">
+        <Link
+          href={bookUrl}
+          className="inline-flex items-center gap-1 text-sm text-[#9ca3af] transition-colors hover:text-white"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back to booking
+        </Link>
+      </div>
 
-        <div className="mt-8 space-y-4 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5">
-          <div className="flex items-start gap-3">
-            <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[#9ca3af]" />
-            <div>
-              <p className="font-medium">{eventType.title}</p>
-              <p className="mt-0.5 text-sm text-[#9ca3af]">
-                {formatLocalTime(booking.startTime)}
-              </p>
+      <div className="flex justify-center px-4 pb-12">
+        <div className="w-full max-w-lg">
+        <div className="rounded-xl border border-[#2a2a2a] bg-[#141414] px-6 py-8 shadow-2xl sm:px-8">
+          <div className="text-center">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/15">
+              <Check className="h-5 w-5 text-emerald-400" strokeWidth={2.5} />
             </div>
+            <h1 className="mt-4 text-xl font-semibold">This meeting is scheduled</h1>
+            <p className="mt-2 text-sm text-[#9ca3af]">
+              Your booking details are below.
+            </p>
           </div>
 
-          <div className="flex items-center gap-3 text-sm text-[#9ca3af]">
-            <Clock className="h-4 w-4 shrink-0" />
-            <span>{eventType.durationMinutes} minutes</span>
-          </div>
+          <div className="mt-8 space-y-6 border-t border-[#2a2a2a] pt-8">
+            <DetailRow label="What">
+              {eventType.durationMinutes} min meeting between {host.name} and{" "}
+              {booking.attendeeName}
+            </DetailRow>
 
-          <div className="flex items-center gap-3 text-sm text-[#9ca3af]">
-            <User className="h-4 w-4 shrink-0" />
-            <span>{booking.attendeeName}</span>
-          </div>
+            <DetailRow label="When">
+              <p>{formatBookingDate(booking.startTime)}</p>
+              <p className="mt-1 text-[#9ca3af]">
+                {formatBookingTimeRange(booking.startTime, booking.endTime)}
+              </p>
+            </DetailRow>
 
-          <div className="flex items-center gap-3 text-sm text-[#9ca3af]">
-            <Mail className="h-4 w-4 shrink-0" />
-            <span>{booking.attendeeEmail}</span>
+            <DetailRow label="Who">
+              <div className="space-y-4">
+                <PersonLine
+                  name={host.name}
+                  email={host.email ?? "host@example.com"}
+                  badge="Host"
+                  badgeClass="bg-blue-500/20 text-blue-300"
+                />
+                <PersonLine
+                  name={booking.attendeeName}
+                  email={booking.attendeeEmail}
+                  badge="Guest"
+                  badgeClass="bg-amber-500/20 text-amber-300"
+                />
+              </div>
+            </DetailRow>
+
+            <DetailRow label="Where">
+              <Link
+                href={videoPath}
+                className="inline-flex items-center gap-1.5 hover:underline"
+              >
+                Cal Video
+                <ExternalLink className="h-3.5 w-3.5 text-[#9ca3af]" />
+              </Link>
+            </DetailRow>
           </div>
         </div>
 
-        <div className="mt-6 text-center text-xs text-[#6b7280]">cal-clone</div>
+        <p className="mt-8 text-center text-xs text-[#6b7280]">cal-clone</p>
+        </div>
       </div>
     </div>
   );

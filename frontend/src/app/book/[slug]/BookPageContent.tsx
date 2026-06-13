@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format, parseISO, startOfMonth } from "date-fns";
 import {
@@ -89,73 +90,110 @@ export function BookPageContent({ slug }: Props) {
     );
   }
 
+  const showingForm = Boolean(selectedSlot && selectedDate);
+
   return (
-    <div className="min-h-screen bg-[#101010] px-4 py-8 text-white">
+    <div className="min-h-screen bg-[#101010] text-white">
+      {showingForm && (
+        <div className="px-6 py-4">
+          <button
+            type="button"
+            onClick={() => setSelectedSlot(null)}
+            className="inline-flex items-center gap-1 text-sm text-[#9ca3af] transition-colors hover:text-white"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back to booking
+          </button>
+        </div>
+      )}
+
+      <div className="px-4 pb-8">
       {isPreviewParam && event?.hidden && (
         <div className="mx-auto mb-4 max-w-5xl rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-200">
           Preview mode — this event is not publicly visible yet.
         </div>
       )}
 
-      <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-[#2a2a2a] bg-[#101010] shadow-2xl">
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)]">
-          {event ? (
-            <BookingEventInfo event={event} timezone={timezone} />
-          ) : (
-            <div className="animate-pulse p-6 lg:p-8">
-              <div className="h-10 w-10 rounded-full bg-[#2a2a2a]" />
-              <div className="mt-6 h-6 w-32 rounded bg-[#2a2a2a]" />
-              <div className="mt-4 h-4 w-24 rounded bg-[#2a2a2a]" />
-            </div>
-          )}
+      <div className="mx-auto max-w-5xl">
+        <div className="overflow-hidden rounded-2xl border border-[#2a2a2a] bg-[#101010] shadow-2xl">
+          <div
+            className={
+              showingForm
+                ? "grid lg:grid-cols-2"
+                : "grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)]"
+            }
+          >
+            {event ? (
+              <BookingEventInfo
+                event={event}
+                timezone={timezone}
+                selectedDayLabel={
+                  showingForm && selectedDate
+                    ? formatSelectedDay(selectedDate)
+                    : undefined
+                }
+                selectedStartTime={selectedSlot?.startTime}
+                selectedEndTime={selectedSlot?.endTime}
+              />
+            ) : (
+              <div className="animate-pulse p-6 lg:p-8">
+                <div className="h-10 w-10 rounded-full bg-[#2a2a2a]" />
+                <div className="mt-6 h-6 w-32 rounded bg-[#2a2a2a]" />
+                <div className="mt-4 h-4 w-24 rounded bg-[#2a2a2a]" />
+              </div>
+            )}
 
-          <BookingCalendar
-            month={month}
-            selected={selectedDate}
-            availableDates={availableDates}
-            loading={calendarLoading && availableDates.size === 0}
-            onMonthChange={(m) => {
-              setMonth(startOfMonth(m));
-              setSelectedDate(null);
-              setSlots([]);
-              setSelectedSlot(null);
-              slotsByDateRef.current = {};
-              setCalendarLoading(true);
-            }}
-            onSelect={handleSelectDate}
-          />
+            {!showingForm && (
+              <>
+                <BookingCalendar
+                  month={month}
+                  selected={selectedDate}
+                  availableDates={availableDates}
+                  loading={calendarLoading && availableDates.size === 0}
+                  onMonthChange={(m) => {
+                    setMonth(startOfMonth(m));
+                    setSelectedDate(null);
+                    setSlots([]);
+                    setSelectedSlot(null);
+                    slotsByDateRef.current = {};
+                    setCalendarLoading(true);
+                  }}
+                  onSelect={handleSelectDate}
+                />
 
-          {selectedSlot && selectedDate ? (
-            <BookingForm
-              slot={selectedSlot}
-              dayLabel={formatSelectedDay(selectedDate)}
-              onBack={() => setSelectedSlot(null)}
-              onSubmit={async ({ name, email }) => {
-                if (!event) return;
-                const booking = await createBooking({
-                  eventTypeId: event.id,
-                  attendeeName: name,
-                  attendeeEmail: email,
-                  startTime: selectedSlot.startTime,
-                });
-                router.push(`/booking/confirmed?id=${booking.id}`);
-              }}
-            />
-          ) : (
-            <TimeSlotList
-              dayLabel={selectedDate ? formatSelectedDay(selectedDate) : null}
-              slots={slots}
-              loading={calendarLoading && slots.length === 0}
-              timezone={timezone}
-              selectedSlot={selectedSlot}
-              onSelect={setSelectedSlot}
-            />
-          )}
+                <TimeSlotList
+                  dayLabel={selectedDate ? formatSelectedDay(selectedDate) : null}
+                  slots={slots}
+                  loading={calendarLoading && slots.length === 0}
+                  timezone={timezone}
+                  selectedSlot={selectedSlot}
+                  onSelect={setSelectedSlot}
+                />
+              </>
+            )}
+
+            {showingForm && selectedSlot && (
+              <BookingForm
+                onBack={() => setSelectedSlot(null)}
+                onSubmit={async ({ name, email }) => {
+                  if (!event) return;
+                  const booking = await createBooking({
+                    eventTypeId: event.id,
+                    attendeeName: name,
+                    attendeeEmail: email,
+                    startTime: selectedSlot.startTime,
+                  });
+                  router.push(`/booking/confirmed?id=${booking.id}`);
+                }}
+              />
+            )}
+          </div>
+
+          <div className="border-t border-[#2a2a2a] py-3 text-center text-xs text-[#6b7280]">
+            cal-clone
+          </div>
         </div>
-
-        <div className="border-t border-[#2a2a2a] py-3 text-center text-xs text-[#6b7280]">
-          cal-clone
-        </div>
+      </div>
       </div>
     </div>
   );

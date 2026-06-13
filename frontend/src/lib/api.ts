@@ -6,6 +6,8 @@ import type {
   EventTypeInput,
   EventTypeWithHost,
   BookingBootstrapResponse,
+  BookingFilter,
+  BookingListItem,
   MonthAvailabilityResponse,
   SlotsResponse,
 } from "./types";
@@ -226,4 +228,20 @@ export function createBooking(data: CreateBookingInput): Promise<Booking> {
 
 export function getBooking(id: string): Promise<BookingWithEvent> {
   return request<BookingWithEvent>(`/bookings/${id}`);
+}
+
+export function getBookings(
+  filter: BookingFilter = "upcoming",
+): Promise<BookingListItem[]> {
+  return request<BookingListItem[]>(
+    `/bookings?filter=${encodeURIComponent(filter)}`,
+  );
+}
+
+export function cancelBooking(id: string): Promise<BookingListItem> {
+  invalidateBookingBootstrapCache();
+  return request<BookingListItem>(`/bookings/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "CANCELLED" }),
+  });
 }

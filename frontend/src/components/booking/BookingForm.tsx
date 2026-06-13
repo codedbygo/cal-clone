@@ -1,18 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import type { Slot } from "@/lib/types";
+import { Loader2 } from "lucide-react";
 import { ApiClientError } from "@/lib/api";
 
 interface Props {
-  slot: Slot;
-  dayLabel: string;
   onBack: () => void;
   onSubmit: (data: { name: string; email: string }) => Promise<void>;
 }
 
-export function BookingForm({ slot, dayLabel, onBack, onSubmit }: Props) {
+export function BookingForm({ onBack, onSubmit }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -36,20 +33,8 @@ export function BookingForm({ slot, dayLabel, onBack, onSubmit }: Props) {
   }
 
   return (
-    <div className="flex min-h-[320px] flex-col p-6 lg:p-8">
-      <button
-        type="button"
-        onClick={onBack}
-        className="mb-4 flex items-center gap-1 text-sm text-[#9ca3af] hover:text-white"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </button>
-
-      <p className="text-sm font-medium text-white">{dayLabel}</p>
-      <p className="mt-1 text-sm text-[#9ca3af]">{slot.time}</p>
-
-      <form onSubmit={handleSubmit} className="mt-6 flex flex-1 flex-col gap-4">
+    <div className="flex min-h-[320px] flex-col border-t border-[#2a2a2a] p-6 lg:border-l lg:border-t-0 lg:p-8">
+      <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
         {error && (
           <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400">
             {error}
@@ -58,7 +43,7 @@ export function BookingForm({ slot, dayLabel, onBack, onSubmit }: Props) {
 
         <div>
           <label htmlFor="booking-name" className="mb-1.5 block text-sm text-[#9ca3af]">
-            Your name
+            Your name <span className="text-white">*</span>
           </label>
           <input
             id="booking-name"
@@ -72,7 +57,7 @@ export function BookingForm({ slot, dayLabel, onBack, onSubmit }: Props) {
 
         <div>
           <label htmlFor="booking-email" className="mb-1.5 block text-sm text-[#9ca3af]">
-            Email address
+            Email address <span className="text-white">*</span>
           </label>
           <input
             id="booking-email"
@@ -85,20 +70,29 @@ export function BookingForm({ slot, dayLabel, onBack, onSubmit }: Props) {
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-auto flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2.5 text-sm font-medium text-black hover:bg-gray-200 disabled:opacity-50"
-        >
-          {submitting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Confirming…
-            </>
-          ) : (
-            "Confirm"
-          )}
-        </button>
+        <div className="mt-auto flex items-center justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onBack}
+            className="px-3 py-2 text-sm text-[#9ca3af] hover:text-white"
+          >
+            Back
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex min-w-[6rem] items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-gray-200 disabled:opacity-50"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Confirming…
+              </>
+            ) : (
+              "Confirm"
+            )}
+          </button>
+        </div>
       </form>
     </div>
   );
