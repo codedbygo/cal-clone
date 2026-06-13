@@ -19,8 +19,9 @@ model User {
   timezone  String   @default("Asia/Kolkata")
   createdAt DateTime @default(now())
 
-  eventTypes EventType[]
-  schedules  AvailabilitySchedule[]
+  eventTypes   EventType[]
+  schedules    AvailabilitySchedule[]
+  integrations Integration[]
 }
 
 model EventType {
@@ -93,15 +94,18 @@ model AvailabilityRule {
 }
 
 model Booking {
-  id            String        @id @default(cuid())
-  eventTypeId   String
-  attendeeName  String
-  attendeeEmail String
-  startTime     DateTime
-  endTime       DateTime
-  status        BookingStatus @default(CONFIRMED)
-  answers       Json          @default("{}")
-  createdAt     DateTime      @default(now())
+  id              String          @id @default(cuid())
+  eventTypeId     String
+  attendeeName    String
+  attendeeEmail   String
+  startTime       DateTime
+  endTime         DateTime
+  status          BookingStatus   @default(CONFIRMED)
+  answers         Json            @default("{}")
+  meetingUrl      String?
+  meetingProvider MeetingProvider @default(CAL_VIDEO)
+  externalEventId String?
+  createdAt       DateTime        @default(now())
 
   eventType EventType @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
 
@@ -109,6 +113,41 @@ model Booking {
   @@index([eventTypeId, startTime])
   // Dashboard upcoming/past filters
   @@index([startTime, status])
+}
+
+enum IntegrationProvider {
+  GOOGLE
+  ZOOM
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum MeetingProvider {
+  GOOGLE_MEET
+  ZOOM
+  CAL_VIDEO
+}
+
+model Integration {
+  id           String              @id @default(cuid())
+  userId       String
+  provider     IntegrationProvider
+  status       IntegrationStatus   @default(DISCONNECTED)
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime?
+  accountEmail String?
+  metadata     Json                @default("{}")
+  connectedAt  DateTime?
+  updatedAt    DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
 }
 
 enum BookingStatus {

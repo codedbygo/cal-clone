@@ -12,6 +12,13 @@ import type {
   CreateAvailabilityInput,
   UpdateAvailabilityInput,
   MonthAvailabilityResponse,
+  IntegrationSummary,
+  IntegrationProvider,
+  InsightsBookingsData,
+  InsightsRoutingData,
+  InsightsRouterPositionData,
+  InsightsCallHistoryData,
+  InsightsWrongRoutingData,
   SlotsResponse,
 } from "./types";
 
@@ -325,4 +332,50 @@ export function setDefaultAvailabilitySchedule(
   return request<AvailabilitySchedule>(`/availability/${id}/default`, {
     method: "PATCH",
   });
+}
+
+export function getIntegrations(): Promise<IntegrationSummary[]> {
+  return request<IntegrationSummary[]>("/integrations");
+}
+
+export function getIntegrationAuthUrl(
+  provider: Lowercase<IntegrationProvider>,
+): Promise<{ url: string }> {
+  return request<{ url: string }>(`/integrations/${provider}/auth-url`);
+}
+
+export function disconnectIntegration(
+  provider: Lowercase<IntegrationProvider>,
+): Promise<void> {
+  return request<void>(`/integrations/${provider}`, { method: "DELETE" });
+}
+
+function insightsPath(segment: string, days = 30): string {
+  return `/insights/${segment}?days=${days}`;
+}
+
+export function getInsightsBookings(days = 30): Promise<InsightsBookingsData> {
+  return request(insightsPath("bookings", days));
+}
+
+export function getInsightsRouting(days = 30): Promise<InsightsRoutingData> {
+  return request(insightsPath("routing", days));
+}
+
+export function getInsightsRouterPosition(
+  days = 30,
+): Promise<InsightsRouterPositionData> {
+  return request(insightsPath("router-position", days));
+}
+
+export function getInsightsCallHistory(
+  days = 30,
+): Promise<InsightsCallHistoryData> {
+  return request(insightsPath("call-history", days));
+}
+
+export function getInsightsWrongRouting(
+  days = 30,
+): Promise<InsightsWrongRoutingData> {
+  return request(insightsPath("wrong-routing", days));
 }

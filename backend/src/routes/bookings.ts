@@ -4,6 +4,11 @@ import prisma, { prismaDirect } from "../lib/db";
 import { getDefaultUserId } from "../lib/constants";
 import { invalidateBootstrapCache } from "./slots";
 import { expandBookingWithBuffer } from "../services/slots";
+import {
+  createMeetingForBooking,
+  deleteMeetingForBooking,
+  updateMeetingForBooking,
+} from "../services/integrations/meetingService";
 import { ApiError } from "../middleware/errorHandler";
 import {
   validateAttendeeEmail,
@@ -79,7 +84,12 @@ router.get("/", async (req, res, next) => {
       },
       include: {
         eventType: {
-          select: { title: true, durationMinutes: true, slug: true },
+          select: {
+            title: true,
+            durationMinutes: true,
+            slug: true,
+            user: { select: { name: true } },
+          },
         },
       },
     });
@@ -139,6 +149,7 @@ router.post("/", async (req, res, next) => {
     });
 
     invalidateBootstrapCache();
+    void createMeetingForBooking(booking.id);
 
     res.status(201).json(booking);
   } catch (err) {
@@ -219,6 +230,7 @@ router.patch("/:id", async (req, res, next) => {
       });
 
       invalidateBootstrapCache();
+      void updateMeetingForBooking(booking.id);
       return res.json(booking);
     }
 
@@ -234,12 +246,23 @@ router.patch("/:id", async (req, res, next) => {
       data: { status: "CANCELLED" },
       include: {
         eventType: {
-          select: { title: true, durationMinutes: true, slug: true },
+          select: {
+            title: true,
+            durationMinutes: true,
+            slug: true,
+            user: { select: { name: true } },
+          },
         },
       },
     });
 
     invalidateBootstrapCache();
+    void deleteMeetingForBooking({
+      id: existing.id,
+      meetingProvider: existing.meetingProvider,
+      externalEventId: existing.externalEventId,
+      eventType: { userId: existing.eventType.userId },
+    });
 
     res.json(booking);
   } catch (err) {

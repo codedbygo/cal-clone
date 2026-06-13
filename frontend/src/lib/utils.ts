@@ -83,6 +83,57 @@ export function getCalVideoPath(bookingId: string): string {
   return `/booking/video?id=${encodeURIComponent(bookingId)}`;
 }
 
+/** e.g. "Fri, 19 Jun" for booking list rows */
+export function formatBookingListDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
+/** e.g. "11:00am - 11:30am" for booking list rows */
+export function formatBookingListTimeRange(startIso: string, endIso: string): string {
+  const fmt = (d: Date) =>
+    d
+      .toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+      .toLowerCase()
+      .replace(/\s/g, "")
+      .replace(":00", "");
+  return `${fmt(new Date(startIso))} - ${fmt(new Date(endIso))}`;
+}
+
+/** e.g. "30 min meeting between Default Host and Alex Demo" */
+export function formatBookingMeetingTitle(
+  durationMinutes: number,
+  eventTitle: string,
+  hostName: string,
+  guestName: string,
+): string {
+  const eventLabel =
+    eventTitle.toLowerCase().includes("min") ||
+    eventTitle.toLowerCase().includes("meeting")
+      ? eventTitle
+      : `${durationMinutes} min meeting`;
+  return `${eventLabel} between ${hostName} and ${guestName}`;
+}
+
+/** Label for join meeting button based on provider */
+export function meetingJoinLabel(provider?: string): string {
+  if (provider === "GOOGLE_MEET") return "Join Google Meet";
+  if (provider === "ZOOM") return "Join Zoom";
+  return "Join Cal Video";
+}
+
+/** Resolve join URL — external link or in-app video page */
+export function resolveMeetingUrl(
+  bookingId: string,
+  meetingUrl?: string | null,
+): string {
+  if (meetingUrl?.startsWith("http")) return meetingUrl;
+  return getCalVideoPath(bookingId);
+}
+
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 /** e.g. "9:00am" */

@@ -81,6 +81,8 @@ Open [http://localhost:3000/event-types](http://localhost:3000/event-types).
 | **Reschedule** | Guest picks new slot via `/book/{slug}?reschedule={id}` |
 | **Custom questions** | Optional fields on event types; answers stored on booking |
 | **Dark mode** | Default dark theme; toggle in admin sidebar |
+| **Apps integrations** | Google Calendar/Meet + Zoom OAuth at `/apps` |
+| **Insights dashboard** | Booking analytics, routing, utilization, call history at `/insights/*` |
 
 ### Assignment checklist
 
@@ -208,7 +210,7 @@ Two Vercel projects from the same repo:
 
 | Project | Root | Environment variables |
 | ------- | ---- | --------------------- |
-| Backend | `backend` | `DATABASE_URL`, `DIRECT_URL`, `FRONTEND_URL` |
+| Backend | `backend` | `DATABASE_URL`, `DIRECT_URL`, `FRONTEND_URL`, OAuth vars (optional) |
 | Frontend | `frontend` | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_APP_URL` |
 
 Full walkthrough: [docs/IMPLEMENTATION_GUIDE.md](./docs/IMPLEMENTATION_GUIDE.md)
@@ -246,6 +248,59 @@ Full walkthrough: [docs/IMPLEMENTATION_GUIDE.md](./docs/IMPLEMENTATION_GUIDE.md)
 | `GET` | `/api/bookings?filter=` | `upcoming` \| `past` \| `cancelled` |
 | `GET` | `/api/bookings/:id` | Booking details (confirmation) |
 | `PATCH` | `/api/bookings/:id` | Cancel `{ status: "CANCELLED" }` or reschedule `{ startTime }` |
+| `GET` | `/api/integrations` | List app connection status |
+| `GET` | `/api/integrations/:provider/auth-url` | Start OAuth (`google` \| `zoom`) |
+| `GET` | `/api/integrations/:provider/callback` | OAuth callback (backend redirect) |
+| `DELETE` | `/api/integrations/:provider` | Disconnect integration |
+| `GET` | `/api/insights/bookings` | Booking volume analytics |
+| `GET` | `/api/insights/routing` | Direct booking entry points |
+| `GET` | `/api/insights/router-position` | Availability utilization |
+| `GET` | `/api/insights/call-history` | Past meetings with video links |
+| `GET` | `/api/insights/wrong-routing` | Cancellations by event type |
+
+---
+
+## Apps integrations (Google + Zoom)
+
+Connect calendar and video apps at [/apps](http://localhost:3000/apps). When connected, new bookings automatically get a meeting link (Google Meet preferred, then Zoom, else Cal Video stub).
+
+### OAuth setup
+
+1. **Google Cloud Console** — create OAuth 2.0 client, enable Calendar API, add redirect URI:
+   - Local: `http://localhost:4000/api/integrations/google/callback`
+   - Prod: `https://cal-clone-phi.vercel.app/api/integrations/google/callback`
+
+2. **Zoom Marketplace** — create OAuth app with scopes `meeting:write`, `user:read`, redirect URI:
+   - Local: `http://localhost:4000/api/integrations/zoom/callback`
+   - Prod: `https://cal-clone-phi.vercel.app/api/integrations/zoom/callback`
+
+3. Add to `backend/.env`:
+
+```env
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=http://localhost:4000/api/integrations/google/callback
+ZOOM_CLIENT_ID=...
+ZOOM_CLIENT_SECRET=...
+ZOOM_REDIRECT_URI=http://localhost:4000/api/integrations/zoom/callback
+OAUTH_STATE_SECRET=your-random-secret
+```
+
+Restart the backend after adding credentials, then click **Connect** on the Apps page.
+
+---
+
+## Insights
+
+Analytics dashboard at `/insights/bookings` (sidebar → Insights):
+
+| Page | URL | Data |
+| ---- | --- | ---- |
+| Bookings | `/insights/bookings` | Volume, cancellations, trends by event/day/hour |
+| Routing | `/insights/routing` | Direct booking entry points by event slug |
+| Router position | `/insights/router-position` | Booked vs available hours (utilization) |
+| Call history | `/insights/call-history` | Past meetings with join links |
+| Wrong routing | `/insights/wrong-routing` | Cancellation rates by event type |
 
 ---
 

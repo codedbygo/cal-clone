@@ -4,11 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   Calendar,
   CalendarDays,
   Check,
+  ChevronDown,
+  ChevronRight,
   Clock,
   ExternalLink,
+  LayoutGrid,
   Link2,
   Menu,
   X,
@@ -21,13 +25,26 @@ const NAV = [
   { href: "/event-types", label: "Event types", icon: Calendar },
   { href: "/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/availability", label: "Availability", icon: Clock },
+  { href: "/apps", label: "Apps", icon: LayoutGrid },
+];
+
+const INSIGHTS_LINKS = [
+  { href: "/insights/bookings", label: "Bookings" },
+  { href: "/insights/routing", label: "Routing" },
+  { href: "/insights/router-position", label: "Router position" },
+  { href: "/insights/call-history", label: "Call history" },
+  { href: "/insights/wrong-routing", label: "Wrong routing" },
 ];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const publicUrl = `${appUrl}/book/30-min`;
+  const publicUrl = `${appUrl}/book`;
   const [copied, setCopied] = useState(false);
+  const insightsOpen =
+    pathname.startsWith("/insights") ||
+    INSIGHTS_LINKS.some((l) => pathname === l.href);
+  const [insightsExpanded, setInsightsExpanded] = useState(insightsOpen);
 
   async function handleCopyPublicLink() {
     const ok = await copyToClipboard(publicUrl);
@@ -51,7 +68,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-0.5 p-2">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
@@ -71,6 +88,49 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             </Link>
           );
         })}
+
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setInsightsExpanded((v) => !v)}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              insightsOpen
+                ? "bg-accent/50 font-medium text-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            <BarChart3 className="h-4 w-4 shrink-0" />
+            <span className="flex-1 text-left">Insights</span>
+            {insightsExpanded ? (
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0 opacity-60" />
+            )}
+          </button>
+          {insightsExpanded && (
+            <div className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-2">
+              {INSIGHTS_LINKS.map(({ href, label }) => {
+                const active = pathname === href;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={onNavigate}
+                    className={cn(
+                      "block rounded-md px-3 py-1.5 text-sm transition-colors",
+                      active
+                        ? "bg-accent font-medium text-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </nav>
 
       <div className="space-y-0.5 border-t border-border p-2">

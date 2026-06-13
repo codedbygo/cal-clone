@@ -9,7 +9,7 @@ import type { BookingWithEvent } from "@/lib/types";
 import {
   formatBookingDate,
   formatBookingTimeRange,
-  getCalVideoPath,
+  resolveMeetingUrl,
 } from "@/lib/utils";
 import { ConfirmationPageSkeleton } from "@/components/booking/ConfirmationPageSkeleton";
 
@@ -90,7 +90,6 @@ function ConfirmedContent() {
   const { eventType } = booking;
   const host = eventType.user;
   const bookUrl = `/book/${eventType.slug}`;
-  const videoPath = getCalVideoPath(booking.id);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -148,10 +147,27 @@ function ConfirmedContent() {
               </DetailRow>
 
               <DetailRow label="Where">
-                <Link href={videoPath} className="inline-flex items-center gap-1.5 hover:underline">
-                  Cal Video
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-                </Link>
+                {(() => {
+                  const joinUrl = resolveMeetingUrl(booking.id, booking.meetingUrl);
+                  const external = joinUrl.startsWith("http");
+                  const label =
+                    booking.meetingProvider === "GOOGLE_MEET"
+                      ? "Google Meet"
+                      : booking.meetingProvider === "ZOOM"
+                        ? "Zoom"
+                        : "Cal Video";
+                  return (
+                    <Link
+                      href={joinUrl}
+                      target={external ? "_blank" : undefined}
+                      rel={external ? "noopener noreferrer" : undefined}
+                      className="inline-flex items-center gap-1.5 hover:underline"
+                    >
+                      {label}
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Link>
+                  );
+                })()}
               </DetailRow>
 
               {booking.status === "CONFIRMED" && (

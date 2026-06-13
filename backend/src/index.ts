@@ -8,6 +8,8 @@ import eventTypesRouter from "./routes/eventTypes";
 import slotsRouter from "./routes/slots";
 import bookingsRouter from "./routes/bookings";
 import availabilityRouter from "./routes/availability";
+import integrationsRouter from "./routes/integrations";
+import insightsRouter from "./routes/insights";
 import { errorHandler } from "./middleware/errorHandler";
 
 async function warmupDatabase() {
@@ -52,6 +54,8 @@ app.use("/api/event-types", eventTypesRouter);
 app.use("/api/slots", slotsRouter);
 app.use("/api/availability", availabilityRouter);
 app.use("/api/bookings", bookingsRouter);
+app.use("/api/integrations", integrationsRouter);
+app.use("/api/insights", insightsRouter);
 
 // Central error handler — must be registered after all routes
 app.use(errorHandler);
