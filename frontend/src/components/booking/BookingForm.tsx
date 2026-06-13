@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { ApiClientError } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface Props {
   onBack: () => void;
@@ -33,56 +35,44 @@ export function BookingForm({ onBack, onSubmit }: Props) {
   }
 
   return (
-    <div className="flex min-h-[320px] flex-col border-t border-[#2a2a2a] p-6 lg:border-l lg:border-t-0 lg:p-8">
+    <div className="flex min-h-[320px] flex-col border-t border-gray-200 p-6 lg:border-l lg:border-t-0 lg:p-8">
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
         {error && (
-          <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400">
-            {error}
-          </p>
+          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
         )}
 
         <div>
-          <label htmlFor="booking-name" className="mb-1.5 block text-sm text-[#9ca3af]">
-            Your name <span className="text-white">*</span>
+          <label htmlFor="booking-name" className="mb-1.5 block text-sm text-gray-600">
+            Your name <span className="text-gray-900">*</span>
           </label>
-          <input
+          <Input
             id="booking-name"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="John Smith"
-            className="w-full rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#6b7280] focus:border-[#4a4a4a]"
           />
         </div>
 
         <div>
-          <label htmlFor="booking-email" className="mb-1.5 block text-sm text-[#9ca3af]">
-            Email address <span className="text-white">*</span>
+          <label htmlFor="booking-email" className="mb-1.5 block text-sm text-gray-600">
+            Email address <span className="text-gray-900">*</span>
           </label>
-          <input
+          <Input
             id="booking-email"
             required
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="john@example.com"
-            className="w-full rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#6b7280] focus:border-[#4a4a4a]"
           />
         </div>
 
         <div className="mt-auto flex items-center justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={onBack}
-            className="px-3 py-2 text-sm text-[#9ca3af] hover:text-white"
-          >
+          <Button type="button" variant="ghost" onClick={onBack}>
             Back
-          </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="inline-flex min-w-[6rem] items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-gray-200 disabled:opacity-50"
-          >
+          </Button>
+          <Button type="submit" disabled={submitting} className="min-w-[6rem]">
             {submitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -91,7 +81,7 @@ export function BookingForm({ onBack, onSubmit }: Props) {
             ) : (
               "Confirm"
             )}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

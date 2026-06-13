@@ -3,6 +3,7 @@
 import { Clock, Mail, X } from "lucide-react";
 import type { BookingListItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 function formatWhen(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -35,35 +36,28 @@ export function BookingRow({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 border-b border-[var(--cal-border)] px-4 py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between",
-        cancelled && "opacity-60",
+        "flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between",
+        cancelled && "opacity-70",
       )}
     >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              "font-medium text-white",
-              cancelled && "line-through",
-            )}
-          >
+          <span className={cn("font-medium text-gray-900", cancelled && "line-through")}>
             {booking.attendeeName}
           </span>
           {showCancelledBadge && cancelled && (
-            <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-xs font-medium text-red-400">
+            <span className="rounded bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-600">
               Cancelled
             </span>
           )}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-white/90">
+          <span className="text-sm font-medium text-gray-700">
             {booking.eventType.title}
           </span>
-          <span className="text-xs text-[var(--cal-subtle)]">
-            /book/{booking.eventType.slug}
-          </span>
+          <span className="text-xs text-gray-400">/book/{booking.eventType.slug}</span>
         </div>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--cal-muted)]">
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
           <span className="flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" />
             {formatWhen(booking.startTime)}
@@ -77,15 +71,16 @@ export function BookingRow({
       </div>
 
       {showCancel && !cancelled && (
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="sm"
           disabled={cancelling}
           onClick={() => onCancel(booking.id)}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--cal-border)] px-3 py-1.5 text-sm text-[var(--cal-muted)] transition-colors hover:border-red-500/50 hover:text-red-400 disabled:opacity-50"
+          className="shrink-0 border-red-200 text-red-600 hover:bg-red-50"
         >
           <X className="h-4 w-4" />
           {cancelling ? "Cancelling…" : "Cancel"}
-        </button>
+        </Button>
       )}
     </div>
   );

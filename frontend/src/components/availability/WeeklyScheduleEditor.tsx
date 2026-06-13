@@ -3,6 +3,15 @@
 import { Loader2 } from "lucide-react";
 import type { AvailabilityRule } from "@/lib/types";
 import { cn, formatTime12h } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 /** Mon → Sun (Cal.com order); values match JS Date.getDay(). */
 export const WEEKDAYS: { dayOfWeek: number; label: string }[] = [
@@ -80,34 +89,6 @@ function snapToQuarter(hhmm: string): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-function DayToggle({
-  enabled,
-  onChange,
-}: {
-  enabled: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={enabled}
-      onClick={() => onChange(!enabled)}
-      className={cn(
-        "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-        enabled ? "bg-white" : "bg-[#3a3a3a]",
-      )}
-    >
-      <span
-        className={cn(
-          "absolute top-0.5 h-5 w-5 rounded-full transition-transform",
-          enabled ? "left-[22px] bg-[#101010]" : "left-0.5 bg-[#6b7280]",
-        )}
-      />
-    </button>
-  );
-}
-
 function TimeSelect({
   value,
   disabled,
@@ -124,21 +105,18 @@ function TimeSelect({
       : [{ value: snapped, label: formatTime12h(snapped) }, ...TIME_OPTIONS];
 
   return (
-    <select
-      value={snapped}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      className={cn(
-        "min-w-[6.5rem] rounded-md border border-[var(--cal-border)] bg-[#1a1a1a] px-3 py-2 text-sm text-white outline-none",
-        "focus:border-[#5a5a5a] disabled:cursor-not-allowed disabled:opacity-40",
-      )}
-    >
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+    <Select value={snapped} disabled={disabled} onValueChange={onChange}>
+      <SelectTrigger className="w-[7.5rem]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -164,25 +142,25 @@ export function WeeklyScheduleEditor({
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
-      {/* One window per day — no + / copy (out of assignment scope) */}
-      <div className="overflow-hidden rounded-xl border border-[var(--cal-border)]">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         {days.map((day, i) => (
           <div
             key={day.dayOfWeek}
             className={cn(
               "flex items-center gap-4 px-4 py-3.5",
-              i > 0 && "border-t border-[var(--cal-border)]",
-              !day.enabled && "opacity-45",
+              i > 0 && "border-t border-border",
+              !day.enabled && "opacity-60",
             )}
           >
-            <DayToggle
-              enabled={day.enabled}
-              onChange={(enabled) => onDayChange(day.dayOfWeek, { enabled })}
+            <Switch
+              checked={day.enabled}
+              onCheckedChange={(enabled) => onDayChange(day.dayOfWeek, { enabled })}
+              aria-label={`Toggle ${day.label}`}
             />
             <span
               className={cn(
                 "w-28 shrink-0 text-sm",
-                day.enabled ? "font-medium text-white" : "text-[var(--cal-muted)]",
+                day.enabled ? "font-medium text-foreground" : "text-muted-foreground",
               )}
             >
               {day.label}
@@ -191,49 +169,43 @@ export function WeeklyScheduleEditor({
               <div className="flex flex-wrap items-center gap-2">
                 <TimeSelect
                   value={day.startTime}
-                  onChange={(startTime) =>
-                    onDayChange(day.dayOfWeek, { startTime })
-                  }
+                  onChange={(startTime) => onDayChange(day.dayOfWeek, { startTime })}
                 />
-                <span className="text-[var(--cal-muted)]">–</span>
+                <span className="text-muted-foreground">–</span>
                 <TimeSelect
                   value={day.endTime}
                   onChange={(endTime) => onDayChange(day.dayOfWeek, { endTime })}
                 />
               </div>
             ) : (
-              <span className="text-sm text-[var(--cal-muted)]">Unavailable</span>
+              <span className="text-sm text-muted-foreground">Unavailable</span>
             )}
           </div>
         ))}
       </div>
 
       <div className="lg:pt-1">
-        <label
-          htmlFor="schedule-timezone"
-          className="mb-2 block text-sm font-medium text-white"
-        >
+        <Label htmlFor="schedule-timezone" className="mb-2 block">
           Timezone
-        </label>
-        <select
-          id="schedule-timezone"
-          value={timezone}
-          disabled={saving}
-          onChange={(e) => onTimezoneChange(e.target.value)}
-          className="w-full rounded-lg border border-[var(--cal-border)] bg-[#1a1a1a] px-3 py-2.5 text-sm text-white outline-none focus:border-[#4a4a4a] disabled:opacity-50"
-        >
-          {tzOptions.map((tz) => (
-            <option key={tz} value={tz}>
-              {tz.replace(/_/g, " ")}
-            </option>
-          ))}
-        </select>
-        <p className="mt-2 text-xs leading-relaxed text-[var(--cal-muted)]">
-          One time range per day. When this schedule is default, public booking
-          pages use these hours in this timezone.
+        </Label>
+        <Select value={timezone} disabled={saving} onValueChange={onTimezoneChange}>
+          <SelectTrigger id="schedule-timezone">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {tzOptions.map((tz) => (
+              <SelectItem key={tz} value={tz}>
+                {tz.replace(/_/g, " ")}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          One time range per day. When this schedule is default, public booking pages
+          use these hours in this timezone.
         </p>
         {saving && (
-          <p className="mt-4 flex items-center gap-2 text-sm text-[var(--cal-muted)]">
+          <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Saving…
           </p>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, Loader2, Pencil, Trash2 } from "lucide-react";
 import {
   deleteAvailabilitySchedule,
@@ -16,7 +17,10 @@ import {
   WeeklyScheduleEditor,
   type DayDraft,
 } from "@/components/availability/WeeklyScheduleEditor";
-import { cn, formatScheduleSummary } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { formatScheduleSummary } from "@/lib/utils";
 
 interface Props {
   scheduleId: string;
@@ -24,46 +28,38 @@ interface Props {
 
 export function AvailabilityEditPage({ scheduleId }: Props) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [summary, setSummary] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [timezone, setTimezone] = useState("Asia/Kolkata");
   const [days, setDays] = useState<DayDraft[]>(() => rulesToDraft([]));
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const data = await getAvailabilitySchedule(scheduleId);
-      setName(data.name);
-      setSummary(data.summary);
-      setIsDefault(data.isDefault);
-      setTimezone(data.timezone);
-      setDays(rulesToDraft(data.rules));
-      setDirty(false);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Schedule not found");
-    } finally {
-      setLoading(false);
-    }
-  }, [scheduleId]);
+  const { data, isLoading, isError, error: loadError } = useQuery({
+    queryKey: ["availability", scheduleId],
+    queryFn: () => getAvailabilitySchedule(scheduleId),
+  });
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!data) return;
+    setName(data.name);
+    setSummary(data.summary);
+    setIsDefault(data.isDefault);
+    setTimezone(data.timezone);
+    setDays(rulesToDraft(data.rules));
+    setDirty(false);
+  }, [data]);
 
-  const liveSummary = useMemo(() => {
-    return formatScheduleSummary(draftToRules(days));
-  }, [days]);
+  const liveSummary = useMemo(() => formatScheduleSummary(draftToRules(days)), [days]);
 
-  function markDirty() {
+  const markDirty = useCallback(() => {
     setDirty(true);
     setToast(null);
-  }
+  }, []);
 
   function handleDayChange(dayOfWeek: number, patch: Partial<DayDraft>) {
     markDirty();
@@ -82,18 +78,19 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
           throw new Error("Start time must be before end time on each enabled day");
         }
       }
-      const data = await updateAvailabilitySchedule(scheduleId, {
+      const updated = await updateAvailabilitySchedule(scheduleId, {
         name: name.trim(),
         timezone,
         rules,
       });
-      setName(data.name);
-      setSummary(data.summary);
-      setIsDefault(data.isDefault);
-      setTimezone(data.timezone);
-      setDays(rulesToDraft(data.rules));
+      queryClient.setQueryData(["availability", scheduleId], updated);
+      setName(updated.name);
+      setSummary(updated.summary);
+      setIsDefault(updated.isDefault);
+      setTimezone(updated.timezone);
+      setDays(rulesToDraft(updated.rules));
       setDirty(false);
-      setToast(`${data.name} schedule saved`);
+      setToast(`${updated.name} schedule saved`);
       setTimeout(() => setToast(null), 3000);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save");
@@ -106,8 +103,8 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
     if (isDefault) return;
     setSaving(true);
     try {
-      const data = await setDefaultAvailabilitySchedule(scheduleId);
-      setIsDefault(data.isDefault);
+      const updated = await setDefaultAvailabilitySchedule(scheduleId);
+      setIsDefault(updated.isDefault);
       setToast("Set as default schedule");
       setTimeout(() => setToast(null), 3000);
     } catch (e) {
@@ -127,19 +124,24 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-[var(--cal-muted)]" />
+      <div className="flex min-h-full items-center justify-center py-24">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  if (error && !name) {
+  if (isError || !data) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-8">
-        <p className="text-red-400">{error}</p>
-        <Link href="/availability" className="mt-4 text-sm text-[var(--cal-muted)] hover:text-white">
+      <div className="flex min-h-full flex-col items-center justify-center px-8 py-24">
+        <p className="text-destructive">
+          {loadError instanceof Error ? loadError.message : "Schedule not found"}
+        </p>
+        <Link
+          href="/availability"
+          className="mt-4 text-sm text-muted-foreground hover:text-foreground"
+        >
           ← Back to availability
         </Link>
       </div>
@@ -147,11 +149,11 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <div className="border-b border-[var(--cal-border)] px-8 py-4">
+    <div className="flex min-h-full flex-col pb-12">
+      <div className="border-b border-border bg-card px-6 py-4 lg:px-8">
         <Link
           href="/availability"
-          className="inline-flex items-center gap-1 text-sm text-[var(--cal-muted)] hover:text-white"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Availability
@@ -160,74 +162,59 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex max-w-md items-center gap-2">
-              <input
+              <Input
                 value={name}
                 onChange={(e) => {
                   markDirty();
                   setName(e.target.value);
                 }}
-                className="min-w-0 flex-1 bg-transparent text-xl font-semibold text-white outline-none placeholder:text-[var(--cal-muted)]"
+                className="border-0 bg-transparent px-0 text-xl font-semibold shadow-none focus-visible:ring-0"
                 placeholder="Schedule name"
               />
-              <Pencil className="h-4 w-4 shrink-0 text-[var(--cal-muted)]" aria-hidden />
+              <Pencil className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             </div>
-            <p className="mt-1 text-sm text-[var(--cal-muted)]">
+            <p className="mt-1 text-sm text-muted-foreground">
               {dirty ? liveSummary : summary}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={isDefault}
+              <Switch
+                checked={isDefault}
                 disabled={isDefault || saving}
-                onClick={() => void handleSetDefault()}
-                className={cn(
-                  "relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50",
-                  isDefault ? "bg-white" : "bg-[#3a3a3a]",
-                )}
-              >
-                <span
-                  className={cn(
-                    "absolute top-0.5 h-5 w-5 rounded-full transition-transform",
-                    isDefault ? "left-[22px] bg-[#101010]" : "left-0.5 bg-[#6b7280]",
-                  )}
-                />
-              </button>
-              <span className="text-sm text-[var(--cal-muted)]">Set as default</span>
+                onCheckedChange={() => void handleSetDefault()}
+                aria-label="Set as default schedule"
+              />
+              <span className="text-sm text-muted-foreground">Set as default</span>
             </div>
-            <div className="h-6 w-px bg-[var(--cal-border)]" />
-            <button
+            <div className="hidden h-6 w-px bg-border sm:block" />
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => void handleDelete()}
-              className="rounded-md p-2 text-[var(--cal-muted)] hover:bg-[#1a1a1a] hover:text-red-400"
+              className="text-muted-foreground hover:text-destructive"
               aria-label="Delete schedule"
             >
               <Trash2 className="h-4 w-4" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={!dirty || saving}
               onClick={() => void handleSave()}
-              className={cn(
-                "inline-flex min-w-[5rem] items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium",
-                dirty
-                  ? "bg-white text-black hover:bg-gray-200"
-                  : "cursor-default bg-[#2a2a2a] text-[var(--cal-muted)]",
-              )}
+              variant={dirty ? "default" : "secondary"}
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               Save
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-4xl flex-1 px-8 py-8">
+      <div className="mx-auto w-full max-w-4xl flex-1 px-6 py-8 lg:px-8">
         {error && (
-          <p className="mb-4 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400">
+          <p className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </p>
         )}
@@ -245,7 +232,7 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
       </div>
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-[var(--cal-border)] bg-[#1a1a1a] px-4 py-2 text-sm text-white shadow-lg">
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground shadow-lg">
           {toast}
         </div>
       )}

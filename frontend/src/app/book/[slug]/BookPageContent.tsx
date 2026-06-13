@@ -77,12 +77,12 @@ export function BookPageContent({ slug }: Props) {
 
   if (error && !event) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#101010] p-8">
-        <p className="text-lg font-medium text-white">Event not found</p>
-        <p className="mt-1 text-sm text-[#9ca3af]">{error}</p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-8">
+        <p className="text-lg font-medium text-gray-900">Event not found</p>
+        <p className="mt-1 text-sm text-gray-500">{error}</p>
         <Link
           href="/event-types"
-          className="mt-4 text-sm text-[#9ca3af] hover:text-white hover:underline"
+          className="mt-4 text-sm text-gray-600 hover:text-gray-900 hover:underline"
         >
           ← Back to dashboard
         </Link>
@@ -93,13 +93,13 @@ export function BookPageContent({ slug }: Props) {
   const showingForm = Boolean(selectedSlot && selectedDate);
 
   return (
-    <div className="min-h-screen bg-[#101010] text-white">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       {showingForm && (
         <div className="px-6 py-4">
           <button
             type="button"
             onClick={() => setSelectedSlot(null)}
-            className="inline-flex items-center gap-1 text-sm text-[#9ca3af] transition-colors hover:text-white"
+            className="inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-900"
           >
             <ChevronLeft className="h-4 w-4" />
             Back to booking
@@ -109,13 +109,13 @@ export function BookPageContent({ slug }: Props) {
 
       <div className="px-4 pb-8">
       {isPreviewParam && event?.hidden && (
-        <div className="mx-auto mb-4 max-w-5xl rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-200">
+        <div className="mx-auto mb-4 max-w-5xl rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-800">
           Preview mode — this event is not publicly visible yet.
         </div>
       )}
 
       <div className="mx-auto max-w-5xl">
-        <div className="overflow-hidden rounded-2xl border border-[#2a2a2a] bg-[#101010] shadow-2xl">
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
           <div
             className={
               showingForm
@@ -137,9 +137,9 @@ export function BookPageContent({ slug }: Props) {
               />
             ) : (
               <div className="animate-pulse p-6 lg:p-8">
-                <div className="h-10 w-10 rounded-full bg-[#2a2a2a]" />
-                <div className="mt-6 h-6 w-32 rounded bg-[#2a2a2a]" />
-                <div className="mt-4 h-4 w-24 rounded bg-[#2a2a2a]" />
+                <div className="h-10 w-10 rounded-full bg-gray-200" />
+                <div className="mt-6 h-6 w-32 rounded bg-gray-200" />
+                <div className="mt-4 h-4 w-24 rounded bg-gray-100" />
               </div>
             )}
 
@@ -189,8 +189,8 @@ export function BookPageContent({ slug }: Props) {
             )}
           </div>
 
-          <div className="border-t border-[#2a2a2a] py-3 text-center text-xs text-[#6b7280]">
-            cal-clone
+          <div className="border-t border-gray-200 py-3 text-center text-xs text-gray-400">
+            Cal.com
           </div>
         </div>
       </div>

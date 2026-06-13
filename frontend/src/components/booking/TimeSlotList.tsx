@@ -26,18 +26,18 @@ export function TimeSlotList({
   return (
     <div className="flex min-h-[320px] flex-col p-6 lg:p-8">
       <div className="mb-4 flex items-center justify-between">
-        <span className="text-sm font-medium text-white">
+        <span className="text-sm font-medium text-gray-900">
           {dayLabel ?? "Select a date"}
         </span>
-        <div className="flex rounded-md border border-[#2a2a2a] text-xs">
+        <div className="flex rounded-md border border-gray-200 text-xs">
           <button
             type="button"
             onClick={() => setUse24h(false)}
             className={cn(
               "rounded-l-md px-2 py-1 transition-colors",
               !use24h
-                ? "bg-white font-medium text-black"
-                : "text-[#6b7280] hover:text-white",
+                ? "bg-gray-900 font-medium text-white"
+                : "text-gray-500 hover:text-gray-900",
             )}
           >
             12h
@@ -48,8 +48,8 @@ export function TimeSlotList({
             className={cn(
               "rounded-r-md px-2 py-1 transition-colors",
               use24h
-                ? "bg-white font-medium text-black"
-                : "text-[#6b7280] hover:text-white",
+                ? "bg-gray-900 font-medium text-white"
+                : "text-gray-500 hover:text-gray-900",
             )}
           >
             24h
@@ -58,37 +58,21 @@ export function TimeSlotList({
       </div>
 
       {!dayLabel && !loading && (
-        <p className="text-sm text-[#6b7280]">
+        <p className="text-sm text-gray-400">
           Pick an available day on the calendar to see times.
         </p>
       )}
 
-      {!dayLabel && loading && (
+      {(loading || (dayLabel && loading)) && (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-10 animate-pulse rounded-lg bg-[#2a2a2a]/60"
-            />
-          ))}
-        </div>
-      )}
-
-      {dayLabel && loading && (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-10 animate-pulse rounded-lg bg-[#2a2a2a]/60"
-            />
+            <div key={i} className="h-10 animate-pulse rounded-lg bg-gray-100" />
           ))}
         </div>
       )}
 
       {dayLabel && !loading && slots.length === 0 && (
-        <p className="text-sm text-[#6b7280]">
-          No available times on this day.
-        </p>
+        <p className="text-sm text-gray-400">No available times on this day.</p>
       )}
 
       {dayLabel && !loading && slots.length > 0 && (
@@ -104,14 +88,14 @@ export function TimeSlotList({
                 className={cn(
                   "flex w-full items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition-colors",
                   active
-                    ? "border-white bg-white text-black"
-                    : "border-[#2a2a2a] bg-[#1a1a1a] text-white hover:border-[#4a4a4a]",
+                    ? "border-gray-900 bg-gray-900 text-white"
+                    : "border-gray-200 bg-white text-gray-900 hover:border-gray-900",
                 )}
               >
                 <span
                   className={cn(
-                    "h-1.5 w-1.5 shrink-0 rounded-full",
-                    active ? "bg-emerald-500" : "bg-emerald-400",
+                    "h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500",
+                    active && "bg-emerald-400",
                   )}
                 />
                 {label}

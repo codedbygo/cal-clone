@@ -45,16 +45,16 @@ export function BookingCalendar({
   }
 
   return (
-    <div className="flex flex-col p-6 lg:border-x lg:border-[#2a2a2a] lg:p-8">
+    <div className="flex flex-col p-6 lg:border-r lg:border-gray-200 lg:p-8">
       <div className="mb-4 flex items-center justify-between">
-        <span className="text-sm font-medium text-white">
+        <span className="text-sm font-medium text-gray-900">
           {format(month, "MMMM yyyy")}
         </span>
         <div className="flex gap-1">
           <button
             type="button"
             onClick={() => onMonthChange(addMonths(month, -1))}
-            className="rounded-md p-1.5 text-[#9ca3af] hover:bg-[#2a2a2a] hover:text-white"
+            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
             aria-label="Previous month"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -62,7 +62,7 @@ export function BookingCalendar({
           <button
             type="button"
             onClick={() => onMonthChange(addMonths(month, 1))}
-            className="rounded-md p-1.5 text-[#9ca3af] hover:bg-[#2a2a2a] hover:text-white"
+            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
             aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4" />
@@ -71,16 +71,14 @@ export function BookingCalendar({
       </div>
 
       {loading && (
-        <p className="mb-3 text-center text-xs text-[#6b7280]">
-          Loading availability…
-        </p>
+        <p className="mb-3 text-center text-xs text-gray-400">Loading availability…</p>
       )}
 
       <div className="grid grid-cols-7 gap-y-1">
         {WEEKDAYS.map((d) => (
           <div
             key={d}
-            className="pb-2 text-center text-[10px] font-medium tracking-wide text-[#6b7280]"
+            className="pb-2 text-center text-[10px] font-medium tracking-wide text-gray-400"
           >
             {d}
           </div>
@@ -94,8 +92,7 @@ export function BookingCalendar({
           const past = isBefore(day, today);
           const weekday = day.getDay();
           const isWeekday = weekday >= 1 && weekday <= 5;
-          const disabled =
-            !inMonth || past || (!loading && !available);
+          const disabled = !inMonth || past || (!loading && !available);
           const pending = loading && inMonth && !past && isWeekday;
 
           return (
@@ -107,24 +104,23 @@ export function BookingCalendar({
                 className={cn(
                   "relative flex h-10 w-10 items-center justify-center rounded-lg text-sm transition-colors",
                   !inMonth && "invisible",
-                  pending && "animate-pulse bg-[#2a2a2a]/60 text-[#9ca3af]",
-                  isSelected &&
-                    "bg-white font-semibold text-black hover:bg-white",
+                  pending && "animate-pulse bg-gray-100 text-gray-400",
+                  isSelected && "bg-gray-900 font-semibold text-white hover:bg-gray-800",
                   !isSelected &&
                     !pending &&
                     available &&
                     !past &&
-                    "bg-[#2a2a2a] text-white hover:bg-[#3a3a3a]",
+                    "bg-gray-100 text-gray-900 hover:bg-gray-200",
                   !isSelected &&
                     !pending &&
                     (!available || past) &&
                     inMonth &&
-                    "text-[#6b7280]",
+                    "text-gray-300",
                   disabled && !pending && "cursor-default",
                 )}
               >
                 {isToday(day) && !isSelected && (
-                  <span className="absolute top-1.5 h-1 w-1 rounded-full bg-white" />
+                  <span className="absolute top-1.5 h-1 w-1 rounded-full bg-gray-900" />
                 )}
                 {format(day, "d")}
               </button>
