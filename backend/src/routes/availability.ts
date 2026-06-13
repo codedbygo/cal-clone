@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import prisma from "../lib/db";
 import { getDefaultUserId } from "../lib/constants";
 import { formatScheduleSummary } from "../lib/scheduleSummary";
@@ -6,11 +7,21 @@ import { invalidateBootstrapCache } from "./slots";
 import { ApiError } from "../middleware/errorHandler";
 import {
   validateAvailabilityRules,
+  validateAvailabilityOverrides,
   validateScheduleName,
   validateTimezone,
 } from "../lib/validate";
 
 const router = Router();
+
+const scheduleInclude = {
+  rules: { orderBy: { dayOfWeek: "asc" as const } },
+  overrides: { orderBy: { date: "asc" as const } },
+} satisfies Prisma.AvailabilityScheduleInclude;
+
+type ScheduleRecord = Prisma.AvailabilityScheduleGetPayload<{
+  include: typeof scheduleInclude;
+}>;
 
 const DEFAULT_RULES = [1, 2, 3, 4, 5].map((dayOfWeek) => ({
   dayOfWeek,
@@ -18,15 +29,7 @@ const DEFAULT_RULES = [1, 2, 3, 4, 5].map((dayOfWeek) => ({
   endTime: "17:00",
 }));
 
-function formatSchedule(
-  schedule: {
-    id: string;
-    name: string;
-    isDefault: boolean;
-    timezone: string;
-    rules: { dayOfWeek: number; startTime: string; endTime: string }[];
-  },
-) {
+function formatSchedule(schedule: ScheduleRecord) {
   const rules = schedule.rules
     .map(({ dayOfWeek, startTime, endTime }) => ({
       dayOfWeek,
@@ -35,6 +38,15 @@ function formatSchedule(
     }))
     .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
 
+  const overrides = schedule.overrides
+    .map(({ date, type, startTime, endTime }) => ({
+      date,
+      type,
+      startTime: startTime ?? undefined,
+      endTime: endTime ?? undefined,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
   return {
     id: schedule.id,
     name: schedule.name,
@@ -42,13 +54,14 @@ function formatSchedule(
     timezone: schedule.timezone,
     summary: formatScheduleSummary(rules),
     rules,
+    overrides,
   };
 }
 
 async function loadScheduleForUser(id: string, userId: string) {
   const schedule = await prisma.availabilitySchedule.findFirst({
     where: { id, userId },
-    include: { rules: { orderBy: { dayOfWeek: "asc" } } },
+    include: scheduleInclude,
   });
   if (!schedule) {
     throw new ApiError(404, "NOT_FOUND", "Schedule not found");
@@ -59,7 +72,7 @@ async function loadScheduleForUser(id: string, userId: string) {
 async function loadScheduleWithRules(id: string) {
   return prisma.availabilitySchedule.findUniqueOrThrow({
     where: { id },
-    include: { rules: { orderBy: { dayOfWeek: "asc" } } },
+    include: scheduleInclude,
   });
 }
 
@@ -69,7 +82,7 @@ router.get("/", async (_req, res, next) => {
     const userId = await getDefaultUserId();
     const schedules = await prisma.availabilitySchedule.findMany({
       where: { userId },
-      include: { rules: { orderBy: { dayOfWeek: "asc" } } },
+      include: scheduleInclude,
       orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
     });
     res.json(schedules.map(formatSchedule));
@@ -140,6 +153,10 @@ router.put("/:id", async (req, res, next) => {
         : undefined;
     const timezone = validateTimezone(req.body.timezone);
     const rules = validateAvailabilityRules(req.body.rules);
+    const overrides =
+      req.body.overrides !== undefined
+        ? validateAvailabilityOverrides(req.body.overrides)
+        : undefined;
 
     await prisma.availabilitySchedule.update({
       where: { id: scheduleId },
@@ -155,6 +172,21 @@ router.put("/:id", async (req, res, next) => {
       await prisma.availabilityRule.createMany({
         data: rules.map((r) => ({ scheduleId, ...r })),
       });
+    }
+
+    if (overrides !== undefined) {
+      await prisma.availabilityOverride.deleteMany({ where: { scheduleId } });
+      if (overrides.length > 0) {
+        await prisma.availabilityOverride.createMany({
+          data: overrides.map((o) => ({
+            scheduleId,
+            date: o.date,
+            type: o.type,
+            startTime: o.startTime ?? null,
+            endTime: o.endTime ?? null,
+          })),
+        });
+      }
     }
 
     const schedule = await loadScheduleWithRules(scheduleId);

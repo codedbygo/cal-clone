@@ -34,24 +34,46 @@ export class ApiClientError extends Error {
   }
 }
 
+const API_TIMEOUT_MS = 12_000;
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    const code = body?.error?.code ?? "UNKNOWN";
-    const message = body?.error?.message ?? res.statusText;
-    throw new ApiClientError(code, message);
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      const code = body?.error?.code ?? "UNKNOWN";
+      const message = body?.error?.message ?? res.statusText;
+      throw new ApiClientError(code, message);
+    }
+
+    if (res.status === 204) return undefined as T;
+    return res.json();
+  } catch (err) {
+    if (err instanceof ApiClientError) throw err;
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new ApiClientError(
+        "TIMEOUT",
+        "Request timed out — is the API running? Check backend/.env database connection.",
+      );
+    }
+    throw new ApiClientError(
+      "NETWORK",
+      "Cannot reach the API — run `make backend` on port 4000 and verify Neon DATABASE_URL.",
+    );
+  } finally {
+    clearTimeout(timeout);
   }
-
-  if (res.status === 204) return undefined as T;
-  return res.json();
 }
 
 export function getEventTypes(options?: { fresh?: boolean }): Promise<EventType[]> {
@@ -239,6 +261,17 @@ export function getBookings(
   return request<BookingListItem[]>(
     `/bookings?filter=${encodeURIComponent(filter)}`,
   );
+}
+
+export function rescheduleBooking(
+  id: string,
+  startTime: string,
+): Promise<BookingListItem> {
+  invalidateBookingBootstrapCache();
+  return request<BookingListItem>(`/bookings/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ startTime }),
+  });
 }
 
 export function cancelBooking(id: string): Promise<BookingListItem> {

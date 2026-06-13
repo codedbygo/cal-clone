@@ -45,16 +45,16 @@ export function BookingCalendar({
   }
 
   return (
-    <div className="flex flex-col p-6 lg:border-r lg:border-gray-200 lg:p-8">
+    <div className="flex flex-col p-6 lg:border-r lg:border-border lg:p-8">
       <div className="mb-4 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-900">
+        <span className="text-sm font-medium text-foreground">
           {format(month, "MMMM yyyy")}
         </span>
         <div className="flex gap-1">
           <button
             type="button"
             onClick={() => onMonthChange(addMonths(month, -1))}
-            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
             aria-label="Previous month"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -62,7 +62,7 @@ export function BookingCalendar({
           <button
             type="button"
             onClick={() => onMonthChange(addMonths(month, 1))}
-            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
             aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4" />
@@ -71,14 +71,16 @@ export function BookingCalendar({
       </div>
 
       {loading && (
-        <p className="mb-3 text-center text-xs text-gray-400">Loading availability…</p>
+        <p className="mb-3 text-center text-xs text-muted-foreground">
+          Loading availability…
+        </p>
       )}
 
       <div className="grid grid-cols-7 gap-y-1">
         {WEEKDAYS.map((d) => (
           <div
             key={d}
-            className="pb-2 text-center text-[10px] font-medium tracking-wide text-gray-400"
+            className="pb-2 text-center text-[10px] font-medium tracking-wide text-muted-foreground"
           >
             {d}
           </div>
@@ -104,23 +106,24 @@ export function BookingCalendar({
                 className={cn(
                   "relative flex h-10 w-10 items-center justify-center rounded-lg text-sm transition-colors",
                   !inMonth && "invisible",
-                  pending && "animate-pulse bg-gray-100 text-gray-400",
-                  isSelected && "bg-gray-900 font-semibold text-white hover:bg-gray-800",
+                  pending && "animate-pulse bg-muted text-muted-foreground",
+                  isSelected &&
+                    "bg-primary font-semibold text-primary-foreground hover:bg-primary/90",
                   !isSelected &&
                     !pending &&
                     available &&
                     !past &&
-                    "bg-gray-100 text-gray-900 hover:bg-gray-200",
+                    "bg-muted text-foreground hover:bg-accent",
                   !isSelected &&
                     !pending &&
                     (!available || past) &&
                     inMonth &&
-                    "text-gray-300",
+                    "text-muted-foreground/40",
                   disabled && !pending && "cursor-default",
                 )}
               >
                 {isToday(day) && !isSelected && (
-                  <span className="absolute top-1.5 h-1 w-1 rounded-full bg-gray-900" />
+                  <span className="absolute top-1.5 h-1 w-1 rounded-full bg-primary" />
                 )}
                 {format(day, "d")}
               </button>

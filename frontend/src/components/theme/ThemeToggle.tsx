@@ -17,7 +17,7 @@ export function ThemeToggle({ className }: Props) {
       onClick={toggleTheme}
       className={cn(
         "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-        "text-[var(--cal-muted)] hover:bg-[var(--cal-hover)] hover:text-[var(--cal-text)]",
+        "text-muted-foreground hover:bg-accent hover:text-foreground",
         className,
       )}
       aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}

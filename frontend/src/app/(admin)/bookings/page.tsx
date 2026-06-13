@@ -6,6 +6,8 @@ import { CalendarDays } from "lucide-react";
 import { cancelBooking, getBookings } from "@/lib/api";
 import { BookingRow } from "@/components/bookings/BookingRow";
 import { AdminPageShell } from "@/components/layout/AdminPageShell";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { BookingFilter, BookingListItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +23,7 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<BookingListItem | null>(null);
 
   const load = useCallback(async (filter: BookingFilter) => {
     setError(null);
@@ -39,20 +42,15 @@ export default function BookingsPage() {
     load(tab);
   }, [tab, load]);
 
-  async function handleCancel(id: string) {
-    if (
-      !confirm(
-        "Cancel this booking? The time slot will become available again on the public page.",
-      )
-    ) {
-      return;
-    }
-    setCancellingId(id);
+  async function handleCancelConfirm() {
+    if (!cancelTarget) return;
+    setCancellingId(cancelTarget.id);
     try {
-      await cancelBooking(id);
-      setBookings((prev) => prev.filter((b) => b.id !== id));
+      await cancelBooking(cancelTarget.id);
+      setBookings((prev) => prev.filter((b) => b.id !== cancelTarget.id));
+      setCancelTarget(null);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to cancel");
+      setError(e instanceof Error ? e.message : "Failed to cancel");
     } finally {
       setCancellingId(null);
     }
@@ -63,7 +61,7 @@ export default function BookingsPage() {
       title="Bookings"
       description="Bookings created through your public event pages."
       headerExtra={
-        <div className="mt-4 inline-flex rounded-lg border border-[var(--cal-border)] bg-[var(--cal-card)] p-1">
+        <div className="mt-4 inline-flex rounded-lg border border-border bg-muted p-1">
           {TABS.map(({ id, label }) => (
             <button
               key={id}
@@ -72,8 +70,8 @@ export default function BookingsPage() {
               className={cn(
                 "rounded-md px-4 py-1.5 text-sm transition-colors",
                 tab === id
-                  ? "bg-[var(--cal-primary)] font-medium text-[var(--cal-primary-fg)]"
-                  : "text-[var(--cal-muted)] hover:text-[var(--cal-text)]",
+                  ? "bg-background font-medium text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {label}
@@ -83,36 +81,39 @@ export default function BookingsPage() {
       }
     >
       {loading && (
-        <div className="space-y-3">
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="animate-pulse rounded-lg border border-[var(--cal-border)] bg-[var(--cal-card)] p-4"
+              className={cn(
+                "animate-pulse px-4 py-4",
+                i < 2 && "border-b border-border",
+              )}
             >
-              <div className="h-4 w-40 rounded bg-gray-200" />
-              <div className="mt-2 h-3 w-56 rounded bg-gray-100" />
+              <div className="h-4 w-40 rounded bg-muted" />
+              <div className="mt-2 h-3 w-56 rounded bg-muted/60" />
             </div>
           ))}
         </div>
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 py-12 text-center">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 py-12 text-center">
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
       {!loading && !error && bookings.length === 0 && (
-        <div className="flex flex-col items-center rounded-lg border border-dashed border-gray-300 bg-white py-20 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
-            <CalendarDays className="h-7 w-7 text-gray-400" />
+        <div className="flex flex-col items-center rounded-lg border border-dashed border-border bg-card py-20 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+            <CalendarDays className="h-7 w-7 text-muted-foreground" />
           </div>
-          <h2 className="mt-4 text-lg font-medium text-gray-900">
+          <h2 className="mt-4 text-lg font-medium text-foreground">
             {tab === "upcoming" && "No upcoming bookings"}
             {tab === "past" && "No past bookings"}
             {tab === "cancelled" && "No cancelled bookings"}
           </h2>
-          <p className="mt-2 max-w-sm text-sm text-gray-500">
+          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
             {tab === "upcoming" &&
               "When someone books via your public link, it appears here."}
             {tab === "past" && "Past meetings will show here after their scheduled time."}
@@ -120,30 +121,39 @@ export default function BookingsPage() {
               "Bookings you cancel from the Upcoming tab will appear here."}
           </p>
           {tab === "upcoming" && (
-            <Link
-              href="/event-types"
-              className="mt-6 text-sm font-medium text-gray-900 underline underline-offset-4"
-            >
-              View event types →
-            </Link>
+            <Button variant="link" asChild className="mt-4">
+              <Link href="/event-types">View event types →</Link>
+            </Button>
           )}
         </div>
       )}
 
       {!loading && !error && bookings.length > 0 && (
-        <div className="space-y-3">
-          {bookings.map((b) => (
+        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          {bookings.map((b, index) => (
             <BookingRow
               key={b.id}
               booking={b}
+              isLast={index === bookings.length - 1}
               showCancel={tab === "upcoming"}
               showCancelledBadge={tab === "cancelled"}
               cancelling={cancellingId === b.id}
-              onCancel={handleCancel}
+              onCancel={() => setCancelTarget(b)}
             />
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(cancelTarget)}
+        title="Cancel booking?"
+        description="The time slot will become available again on your public booking page."
+        confirmLabel="Cancel booking"
+        loading={Boolean(cancellingId)}
+        destructive
+        onConfirm={handleCancelConfirm}
+        onClose={() => !cancellingId && setCancelTarget(null)}
+      />
     </AdminPageShell>
   );
 }

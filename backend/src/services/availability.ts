@@ -7,18 +7,36 @@ import {
 } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import type { AvailabilityRule } from "@prisma/client";
-import { generateSlots, type Slot } from "./slots";
+import {
+  generateSlots,
+  resolveDayRule,
+  type AvailabilityOverrideLike,
+  type BookingBlock,
+  type Slot,
+} from "./slots";
 
 interface MonthInput {
   month: string;
   durationMinutes: number;
   timezone: string;
   rules: AvailabilityRule[];
-  bookings: { startTime: Date; endTime: Date }[];
+  overrides: AvailabilityOverrideLike[];
+  bookings: BookingBlock[];
+  bufferBeforeMinutes?: number;
+  bufferAfterMinutes?: number;
 }
 
 export function computeMonthAvailability(input: MonthInput): string[] {
-  const { month, durationMinutes, timezone, rules, bookings } = input;
+  const {
+    month,
+    durationMinutes,
+    timezone,
+    rules,
+    overrides,
+    bookings,
+    bufferBeforeMinutes,
+    bufferAfterMinutes,
+  } = input;
   const monthStart = parseISO(`${month}-01`);
   const monthEnd = endOfMonth(monthStart);
   const availableDates: string[] = [];
@@ -34,7 +52,10 @@ export function computeMonthAvailability(input: MonthInput): string[] {
       durationMinutes,
       timezone,
       rules,
+      overrides,
       bookings,
+      bufferBeforeMinutes,
+      bufferAfterMinutes,
     });
     if (slots.length > 0) availableDates.push(dateStr);
   }
@@ -47,14 +68,26 @@ interface DayInput {
   durationMinutes: number;
   timezone: string;
   rules: AvailabilityRule[];
-  bookings: { startTime: Date; endTime: Date }[];
+  overrides: AvailabilityOverrideLike[];
+  bookings: BookingBlock[];
+  bufferBeforeMinutes?: number;
+  bufferAfterMinutes?: number;
 }
 
 export function computeDaySlots(input: DayInput): Slot[] {
-  const { date, durationMinutes, timezone, rules, bookings } = input;
+  const {
+    date,
+    durationMinutes,
+    timezone,
+    rules,
+    overrides,
+    bookings,
+    bufferBeforeMinutes,
+    bufferAfterMinutes,
+  } = input;
   const noonUtc = fromZonedTime(`${date}T12:00:00`, timezone);
   const dayOfWeek = toZonedTime(noonUtc, timezone).getDay();
-  const rule = rules.find((r) => r.dayOfWeek === dayOfWeek) ?? null;
+  const rule = resolveDayRule(date, dayOfWeek, rules, overrides);
   if (!rule) return [];
 
   const dayStart = fromZonedTime(`${date}T00:00:00`, timezone);
@@ -67,8 +100,10 @@ export function computeDaySlots(input: DayInput): Slot[] {
     date,
     durationMinutes,
     timezone,
-    rule: { startTime: rule.startTime, endTime: rule.endTime },
+    rule,
     bookings: dayBookings,
+    bufferBeforeMinutes,
+    bufferAfterMinutes,
   });
 }
 

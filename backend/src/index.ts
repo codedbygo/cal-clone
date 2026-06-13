@@ -11,22 +11,41 @@ import availabilityRouter from "./routes/availability";
 import { errorHandler } from "./middleware/errorHandler";
 
 async function warmupDatabase() {
-  try {
-    await prisma.$connect();
-    await getDefaultUserId();
-  } catch (err) {
-    console.warn("DB warmup failed — first request may be slow:", err);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await prisma.$connect();
+      await getDefaultUserId();
+      console.log("Database connected");
+      return;
+    } catch (err) {
+      if (attempt === 3) {
+        console.warn(
+          "DB warmup failed — API requests will error until Neon is reachable. Check DATABASE_URL in backend/.env:",
+          err,
+        );
+        return;
+      }
+      await new Promise((r) => setTimeout(r, attempt * 2000));
+    }
   }
 }
 
 const app = express();
 
-// Only the frontend origin may call this API from a browser (HLD §11)
 app.use(cors({ origin: process.env.FRONTEND_URL ?? "http://localhost:3000" }));
 app.use(express.json());
 
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok" });
+app.get("/api/health", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "ok", db: "connected" });
+  } catch {
+    res.status(503).json({
+      status: "degraded",
+      db: "disconnected",
+      hint: "Check DATABASE_URL / DIRECT_URL in backend/.env — Neon project may be paused.",
+    });
+  }
 });
 
 app.use("/api/event-types", eventTypesRouter);

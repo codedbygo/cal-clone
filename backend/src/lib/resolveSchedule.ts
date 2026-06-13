@@ -1,7 +1,12 @@
-import type { AvailabilityRule, AvailabilitySchedule } from "@prisma/client";
+import type {
+  AvailabilityOverride,
+  AvailabilityRule,
+  AvailabilitySchedule,
+} from "@prisma/client";
 
 type ScheduleWithRules = AvailabilitySchedule & {
   rules: AvailabilityRule[];
+  overrides?: AvailabilityOverride[];
 };
 
 export function resolveBookingSchedule(

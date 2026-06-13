@@ -15,6 +15,7 @@ import {
   updateEventType,
 } from "@/lib/api";
 import type { EventType, EventTypeInput } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export default function EventTypesPage() {
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
@@ -90,7 +91,7 @@ export default function EventTypesPage() {
       actions={
         <>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search"
@@ -112,28 +113,31 @@ export default function EventTypesPage() {
       }
     >
       {loading && (
-        <div className="space-y-3">
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="animate-pulse rounded-lg border border-[var(--cal-border)] bg-[var(--cal-card)] p-4"
+              className={cn(
+                "animate-pulse px-4 py-4",
+                i < 2 && "border-b border-border",
+              )}
             >
-              <div className="h-4 w-48 rounded bg-gray-200" />
-              <div className="mt-2 h-3 w-24 rounded bg-gray-100" />
+              <div className="h-4 w-56 rounded bg-muted" />
+              <div className="mt-2 h-3 w-12 rounded bg-muted/60" />
             </div>
           ))}
         </div>
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 py-12 text-center">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 py-12 text-center">
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
       {!loading && !error && filtered.length === 0 && (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white py-16 text-center">
-          <p className="text-sm text-gray-500">
+        <div className="rounded-lg border border-dashed border-border bg-card py-16 text-center">
+          <p className="text-sm text-muted-foreground">
             {search ? "No event types match your search." : "No event types yet."}
           </p>
           {!search && (
@@ -152,12 +156,13 @@ export default function EventTypesPage() {
       )}
 
       {!loading && !error && filtered.length > 0 && (
-        <div className="space-y-3">
-          {filtered.map((et) => (
+        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          {filtered.map((et, index) => (
             <EventTypeRow
               key={et.id}
               event={et}
               bookingPath={`/book/${et.slug}`}
+              isLast={index === filtered.length - 1}
               onToggle={handleToggle}
               onEdit={(e) => {
                 setEditing(e);

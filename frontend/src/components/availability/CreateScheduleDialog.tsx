@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Props {
   open: boolean;
@@ -41,11 +42,11 @@ export function CreateScheduleDialog({ open, onClose, onCreate }: Props) {
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent title="New schedule">
         <form onSubmit={handleSubmit} className="space-y-4 p-5">
-          <p className="text-sm text-gray-500">Give your availability schedule a name.</p>
-          <div>
-            <label htmlFor="schedule-name" className="mb-1.5 block text-sm font-medium text-gray-700">
-              Schedule name
-            </label>
+          <p className="text-sm text-muted-foreground">
+            Give your availability schedule a name.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="schedule-name">Schedule name</Label>
             <Input
               id="schedule-name"
               autoFocus
@@ -54,7 +55,7 @@ export function CreateScheduleDialog({ open, onClose, onCreate }: Props) {
               placeholder="Working hours"
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel

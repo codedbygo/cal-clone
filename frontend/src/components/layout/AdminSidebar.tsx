@@ -39,15 +39,15 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <>
-      <div className="flex items-center gap-3 border-b border-[var(--cal-border)] px-4 py-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--cal-primary)] text-xs font-semibold text-[var(--cal-primary-fg)]">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-4">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
           DH
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[var(--cal-text)]">
+          <p className="truncate text-sm font-semibold text-foreground">
             Default Host
           </p>
-          <p className="truncate text-xs text-[var(--cal-muted)]">host@example.com</p>
+          <p className="truncate text-xs text-muted-foreground">host@example.com</p>
         </div>
       </div>
 
@@ -62,8 +62,8 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                 active
-                  ? "bg-[var(--cal-active)] font-medium text-[var(--cal-text)]"
-                  : "text-[var(--cal-muted)] hover:bg-[var(--cal-hover)] hover:text-[var(--cal-text)]",
+                  ? "bg-accent font-medium text-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -73,12 +73,12 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
 
-      <div className="space-y-0.5 border-t border-[var(--cal-border)] p-2">
+      <div className="space-y-0.5 border-t border-border p-2">
         <a
           href={publicUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-[var(--cal-muted)] hover:bg-[var(--cal-hover)] hover:text-[var(--cal-text)]"
+          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <ExternalLink className="h-4 w-4" />
           View public page
@@ -90,7 +90,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
             copied
               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-              : "text-[var(--cal-muted)] hover:bg-[var(--cal-hover)] hover:text-[var(--cal-text)]",
+              : "text-muted-foreground hover:bg-accent hover:text-foreground",
           )}
         >
           {copied ? (
@@ -119,7 +119,7 @@ export function AdminSidebar() {
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        className="fixed left-4 top-4 z-40 rounded-md border border-[var(--cal-border)] bg-[var(--cal-card)] p-2 text-[var(--cal-text)] shadow-sm lg:hidden"
+        className="fixed left-4 top-4 z-40 rounded-md border border-border bg-card p-2 text-foreground shadow-sm lg:hidden"
         aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
@@ -134,23 +134,23 @@ export function AdminSidebar() {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-[var(--cal-border)] bg-[var(--cal-sidebar)] transition-transform lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground transition-transform lg:static lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-14 items-center justify-between border-b border-[var(--cal-border)] px-4 lg:hidden">
-          <span className="text-lg font-semibold text-[var(--cal-text)]">Cal.com</span>
+        <div className="flex h-14 items-center justify-between border-b border-border px-4 lg:hidden">
+          <span className="text-lg font-semibold text-foreground">Cal.com</span>
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
-            className="rounded-md p-1 text-[var(--cal-muted)] hover:bg-[var(--cal-hover)]"
+            className="rounded-md p-1 text-muted-foreground hover:bg-accent"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="hidden h-14 items-center border-b border-[var(--cal-border)] px-4 lg:flex">
-          <span className="text-lg font-semibold tracking-tight text-[var(--cal-text)]">
+        <div className="hidden h-14 items-center border-b border-border px-4 lg:flex">
+          <span className="text-lg font-semibold tracking-tight text-foreground">
             Cal.com
           </span>
         </div>

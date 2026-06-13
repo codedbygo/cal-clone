@@ -44,6 +44,122 @@ export function validateHidden(hidden: unknown): boolean {
   return hidden;
 }
 
+export function validateBufferMinutes(value: unknown, field: string): number {
+  if (value === undefined || value === null) return 0;
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    invalid(`${field}: must be an integer`);
+  }
+  if (value < 0 || value > 120) {
+    invalid(`${field}: must be between 0 and 120`);
+  }
+  return value;
+}
+
+export interface CustomQuestion {
+  id: string;
+  label: string;
+  type: "text" | "textarea";
+  required: boolean;
+}
+
+export function validateCustomQuestions(questions: unknown): CustomQuestion[] {
+  if (questions === undefined || questions === null) return [];
+  if (!Array.isArray(questions)) invalid("customQuestions: must be an array");
+  if (questions.length > 5) invalid("customQuestions: max 5 questions");
+
+  return questions.map((q, i) => {
+    if (typeof q !== "object" || q === null) {
+      invalid(`customQuestions[${i}]: must be an object`);
+    }
+    const raw = q as Record<string, unknown>;
+    const id = typeof raw.id === "string" && raw.id.trim() ? raw.id.trim() : `q${i + 1}`;
+    const label = typeof raw.label === "string" ? raw.label.trim() : "";
+    if (label.length < 1 || label.length > 200) {
+      invalid(`customQuestions[${i}].label: must be 1–200 characters`);
+    }
+    const type = raw.type === "textarea" ? "textarea" : "text";
+    const required = raw.required === true;
+    return { id, label, type, required };
+  });
+}
+
+export function validateBookingAnswers(
+  questions: CustomQuestion[],
+  answers: unknown,
+): Record<string, string> {
+  if (answers === undefined || answers === null) {
+    if (questions.some((q) => q.required)) {
+      invalid("answers: required for custom questions");
+    }
+    return {};
+  }
+  if (typeof answers !== "object" || Array.isArray(answers)) {
+    invalid("answers: must be an object");
+  }
+  const raw = answers as Record<string, unknown>;
+  const result: Record<string, string> = {};
+
+  for (const q of questions) {
+    const val = raw[q.id];
+    if (val === undefined || val === null || val === "") {
+      if (q.required) invalid(`answers.${q.id}: required`);
+      continue;
+    }
+    if (typeof val !== "string") invalid(`answers.${q.id}: must be a string`);
+    const trimmed = val.trim();
+    if (trimmed.length > 1000) invalid(`answers.${q.id}: max 1000 characters`);
+    result[q.id] = trimmed;
+  }
+
+  return result;
+}
+
+export interface AvailabilityOverrideInput {
+  date: string;
+  type: "UNAVAILABLE" | "CUSTOM_HOURS";
+  startTime?: string;
+  endTime?: string;
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function validateAvailabilityOverrides(
+  overrides: unknown,
+): AvailabilityOverrideInput[] {
+  if (overrides === undefined || overrides === null) return [];
+  if (!Array.isArray(overrides)) invalid("overrides: must be an array");
+
+  const seen = new Set<string>();
+  const result: AvailabilityOverrideInput[] = [];
+
+  for (const entry of overrides) {
+    if (typeof entry !== "object" || entry === null) {
+      invalid("overrides: each entry must be an object");
+    }
+    const raw = entry as Record<string, unknown>;
+    const date = typeof raw.date === "string" ? raw.date : "";
+    if (!DATE_RE.test(date)) invalid("overrides.date: must be YYYY-MM-DD");
+    if (seen.has(date)) invalid("overrides: duplicate date");
+    seen.add(date);
+
+    const type =
+      raw.type === "CUSTOM_HOURS" ? "CUSTOM_HOURS" : "UNAVAILABLE";
+
+    if (type === "CUSTOM_HOURS") {
+      const startTime = validateTimeString(raw.startTime, "startTime");
+      const endTime = validateTimeString(raw.endTime, "endTime");
+      if (startTime >= endTime) {
+        invalid("override startTime must be before endTime");
+      }
+      result.push({ date, type, startTime, endTime });
+    } else {
+      result.push({ date, type: "UNAVAILABLE" });
+    }
+  }
+
+  return result;
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function validateAttendeeName(name: unknown): string {

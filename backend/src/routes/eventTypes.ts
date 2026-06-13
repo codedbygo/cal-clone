@@ -9,6 +9,8 @@ import {
   validateHidden,
   validateSlug,
   validateTitle,
+  validateBufferMinutes,
+  validateCustomQuestions,
 } from "../lib/validate";
 
 const router = Router();
@@ -55,9 +57,28 @@ router.post("/", async (req, res, next) => {
     const slug = validateSlug(req.body.slug);
     const hidden =
       req.body.hidden !== undefined ? validateHidden(req.body.hidden) : false;
+    const bufferBeforeMinutes = validateBufferMinutes(
+      req.body.bufferBeforeMinutes,
+      "bufferBeforeMinutes",
+    );
+    const bufferAfterMinutes = validateBufferMinutes(
+      req.body.bufferAfterMinutes,
+      "bufferAfterMinutes",
+    );
+    const customQuestions = validateCustomQuestions(req.body.customQuestions);
 
     const eventType = await prisma.eventType.create({
-      data: { userId, title, description, durationMinutes, slug, hidden },
+      data: {
+        userId,
+        title,
+        description,
+        durationMinutes,
+        slug,
+        hidden,
+        bufferBeforeMinutes,
+        bufferAfterMinutes,
+        customQuestions: customQuestions as unknown as Prisma.InputJsonValue,
+      },
     });
     res.status(201).json(eventType);
   } catch (err) {
@@ -117,6 +138,23 @@ router.put("/:id", async (req, res, next) => {
     }
     if (req.body.slug !== undefined) data.slug = validateSlug(req.body.slug);
     if (req.body.hidden !== undefined) data.hidden = validateHidden(req.body.hidden);
+    if (req.body.bufferBeforeMinutes !== undefined) {
+      data.bufferBeforeMinutes = validateBufferMinutes(
+        req.body.bufferBeforeMinutes,
+        "bufferBeforeMinutes",
+      );
+    }
+    if (req.body.bufferAfterMinutes !== undefined) {
+      data.bufferAfterMinutes = validateBufferMinutes(
+        req.body.bufferAfterMinutes,
+        "bufferAfterMinutes",
+      );
+    }
+    if (req.body.customQuestions !== undefined) {
+      data.customQuestions = validateCustomQuestions(
+        req.body.customQuestions,
+      ) as unknown as Prisma.InputJsonValue;
+    }
 
     const eventType = await prisma.eventType.update({
       where: { id: existing.id },

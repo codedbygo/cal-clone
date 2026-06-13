@@ -17,7 +17,7 @@
 ```mermaid
 erDiagram
   User ||--o{ EventType : "owns"
-  User ||--o| AvailabilitySchedule : "has one"
+  User ||--o{ AvailabilitySchedule : "has many"
   AvailabilitySchedule ||--o{ AvailabilityRule : "contains"
   EventType ||--o{ Booking : "receives"
 
@@ -42,7 +42,9 @@ erDiagram
 
   AvailabilitySchedule {
     string id PK "cuid"
-    string userId FK "unique - one schedule per user"
+    string userId FK
+    string name "e.g. Working hours"
+    boolean isDefault "one default per user"
     string timezone "IANA, used for slot math"
     datetime updatedAt
   }
@@ -101,10 +103,12 @@ One row seeded (`host@example.com`) — the assignment assumes a default logged-
 | Column | Type | Notes |
 | ------ | ---- | ----- |
 | `id` | `String` cuid | PK |
-| `userId` | `String` FK → User, **unique** | Enforces one schedule per user (v1). Multiple schedules (bonus) = drop unique + add name + FK from EventType |
+| `userId` | `String` FK → User | `onDelete: Cascade`; multiple schedules per user (bonus) |
+| `name` | `String` | Display label, e.g. "Working hours" |
+| `isDefault` | `Boolean` | Exactly one schedule per user should be default; public slots use the default |
 | `timezone` | `String` | **Authoritative timezone for slot generation** — rules' HH:mm values are interpreted in this zone |
 
-Separate table (not columns on `User`) so rules have a clean parent and the bonus "multiple schedules" feature is a schema-light change.
+Separate table (not columns on `User`) so rules have a clean parent. Multiple named schedules with a default flag is implemented as a bonus feature.
 
 ### 2.4 `AvailabilityRule`
 
@@ -142,7 +146,7 @@ Separate table (not columns on `User`) so rules have a clean parent and the bonu
 | Index | Table | Serves |
 | ----- | ----- | ------ |
 | `@@unique([userId, slug])` | EventType | Slug lookup on public page + uniqueness |
-| `@@unique([userId])` | AvailabilitySchedule | One schedule per user + fast lookup |
+| `@@index([userId])` | AvailabilitySchedule | List schedules per user + default lookup |
 | `@@unique([scheduleId, dayOfWeek])` | AvailabilityRule | Rule fetch per weekday + uniqueness |
 | `@@index([eventTypeId, startTime])` | Booking | **Hot path:** overlap check + per-date slot query |
 | `@@index([startTime, status])` | Booking | Dashboard upcoming/past filters |
@@ -184,11 +188,11 @@ Layer 1 must fully work standalone (Neon supports `btree_gist`, but the app cann
 
 | Entity | Rows |
 | ------ | ---- |
-| User | 1 — "Default Host" / `host@example.com` / `America/New_York` |
-| EventType | 2 — "30 Minute Meeting" (`30-min`, 30) · "Intro Call" (`intro-call`, 15) |
-| AvailabilitySchedule | 1 — `America/New_York` |
+| User | 1 — "Default Host" / `host@example.com` / `Asia/Kolkata` |
+| EventType | 3 — "30 Minute Meeting" (`30-min`, 30) · "Intro Call" (`intro-call`, 15, hidden) · "15 min meeting" (`15-min`, 15) |
+| AvailabilitySchedule | 1 — "Working hours", default, `Asia/Kolkata` |
 | AvailabilityRule | 5 — Mon–Fri (dayOfWeek 1–5), 09:00–17:00 |
-| Booking | 3 — 1 upcoming CONFIRMED · 1 past CONFIRMED · 1 past CANCELLED |
+| Booking | 9 — 3 upcoming CONFIRMED · 3 past CONFIRMED · 3 past CANCELLED (`demo-*@example.com`) |
 
 Seed is idempotent: `upsert` by email/slug so re-running never duplicates.
 

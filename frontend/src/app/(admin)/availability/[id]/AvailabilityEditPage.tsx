@@ -17,7 +17,10 @@ import {
   WeeklyScheduleEditor,
   type DayDraft,
 } from "@/components/availability/WeeklyScheduleEditor";
+import { DateOverridesEditor } from "@/components/availability/DateOverridesEditor";
 import { Button } from "@/components/ui/button";
+import type { AvailabilityOverride } from "@/lib/types";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { formatScheduleSummary } from "@/lib/utils";
@@ -34,10 +37,13 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
   const [isDefault, setIsDefault] = useState(false);
   const [timezone, setTimezone] = useState("Asia/Kolkata");
   const [days, setDays] = useState<DayDraft[]>(() => rulesToDraft([]));
+  const [overrides, setOverrides] = useState<AvailabilityOverride[]>([]);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const { data, isLoading, isError, error: loadError } = useQuery({
     queryKey: ["availability", scheduleId],
@@ -51,6 +57,7 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
     setIsDefault(data.isDefault);
     setTimezone(data.timezone);
     setDays(rulesToDraft(data.rules));
+    setOverrides(data.overrides ?? []);
     setDirty(false);
   }, [data]);
 
@@ -82,6 +89,7 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
         name: name.trim(),
         timezone,
         rules,
+        overrides: overrides.filter((o) => o.date),
       });
       queryClient.setQueryData(["availability", scheduleId], updated);
       setName(updated.name);
@@ -89,6 +97,7 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
       setIsDefault(updated.isDefault);
       setTimezone(updated.timezone);
       setDays(rulesToDraft(updated.rules));
+      setOverrides(updated.overrides ?? []);
       setDirty(false);
       setToast(`${updated.name} schedule saved`);
       setTimeout(() => setToast(null), 3000);
@@ -114,13 +123,16 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
     }
   }
 
-  async function handleDelete() {
-    if (!confirm("Delete this availability schedule?")) return;
+  async function handleDeleteConfirm() {
+    setDeleting(true);
     try {
       await deleteAvailabilitySchedule(scheduleId);
       router.push("/availability");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete");
+      setDeleteOpen(false);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -193,7 +205,7 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => void handleDelete()}
+              onClick={() => setDeleteOpen(true)}
               className="text-muted-foreground hover:text-destructive"
               aria-label="Delete schedule"
             >
@@ -229,6 +241,16 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
           }}
           onDayChange={handleDayChange}
         />
+
+        <div className="mt-8">
+          <DateOverridesEditor
+            overrides={overrides}
+            onChange={(next) => {
+              markDirty();
+              setOverrides(next);
+            }}
+          />
+        </div>
       </div>
 
       {toast && (
@@ -236,6 +258,17 @@ export function AvailabilityEditPage({ scheduleId }: Props) {
           {toast}
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete schedule?"
+        description="This availability schedule and its weekly rules will be permanently removed."
+        confirmLabel="Delete"
+        loading={deleting}
+        destructive
+        onConfirm={handleDeleteConfirm}
+        onClose={() => !deleting && setDeleteOpen(false)}
+      />
     </div>
   );
 }

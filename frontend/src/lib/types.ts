@@ -1,3 +1,10 @@
+export interface CustomQuestion {
+  id: string;
+  label: string;
+  type: "text" | "textarea";
+  required: boolean;
+}
+
 export interface EventType {
   id: string;
   userId: string;
@@ -6,6 +13,9 @@ export interface EventType {
   durationMinutes: number;
   slug: string;
   hidden: boolean;
+  bufferBeforeMinutes: number;
+  bufferAfterMinutes: number;
+  customQuestions: CustomQuestion[];
   createdAt: string;
   updatedAt: string;
 }
@@ -20,6 +30,9 @@ export interface EventTypeInput {
   durationMinutes: number;
   slug: string;
   hidden?: boolean;
+  bufferBeforeMinutes?: number;
+  bufferAfterMinutes?: number;
+  customQuestions?: CustomQuestion[];
 }
 
 export interface Slot {
@@ -55,6 +68,7 @@ export interface Booking {
   startTime: string;
   endTime: string;
   status: "CONFIRMED" | "CANCELLED";
+  answers: Record<string, string>;
   createdAt: string;
 }
 
@@ -82,6 +96,14 @@ export interface CreateBookingInput {
   attendeeName: string;
   attendeeEmail: string;
   startTime: string;
+  answers?: Record<string, string>;
+}
+
+export interface AvailabilityOverride {
+  date: string;
+  type: "UNAVAILABLE" | "CUSTOM_HOURS";
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface AvailabilityRule {
@@ -97,6 +119,7 @@ export interface AvailabilitySchedule {
   timezone: string;
   summary: string;
   rules: AvailabilityRule[];
+  overrides: AvailabilityOverride[];
 }
 
 export interface CreateAvailabilityInput {
@@ -107,4 +130,5 @@ export interface UpdateAvailabilityInput {
   name?: string;
   timezone: string;
   rules: AvailabilityRule[];
+  overrides?: AvailabilityOverride[];
 }

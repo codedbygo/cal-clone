@@ -17,21 +17,21 @@ export function AdminPageShell({
 }: Props) {
   return (
     <div className="flex min-h-full flex-col">
-      <header className="shrink-0 border-b border-[var(--cal-border)] bg-[var(--cal-card)] px-6 py-6 lg:px-8">
+      <header className="shrink-0 border-b border-border bg-background px-6 py-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-[var(--cal-text)]">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               {title}
             </h1>
             {description && (
-              <p className="mt-1 max-w-xl text-sm text-[var(--cal-muted)]">{description}</p>
+              <p className="mt-1 max-w-xl text-sm text-muted-foreground">{description}</p>
             )}
           </div>
           {actions && <div className="flex shrink-0 items-center gap-3">{actions}</div>}
         </div>
         {headerExtra}
       </header>
-      <div className="flex-1 px-6 py-6 pb-16 lg:px-8">{children}</div>
+      <div className="flex-1 bg-background px-6 py-6 pb-16 lg:px-8">{children}</div>
     </div>
   );
 }

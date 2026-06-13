@@ -28,7 +28,7 @@ async function loadEventWithSchedule(slug: string, preview: boolean) {
         select: {
           name: true,
           email: true,
-          schedules: { include: { rules: true } },
+          schedules: { include: { rules: true, overrides: true } },
         },
       },
     },
@@ -48,7 +48,7 @@ async function loadEventForBootstrap(slug: string, preview: boolean) {
         select: {
           name: true,
           email: true,
-          schedules: { include: { rules: true } },
+          schedules: { include: { rules: true, overrides: true } },
         },
       },
       bookings: {
@@ -74,6 +74,9 @@ function eventPayload(
     durationMinutes: eventType.durationMinutes,
     slug: eventType.slug,
     hidden: eventType.hidden,
+    bufferBeforeMinutes: eventType.bufferBeforeMinutes,
+    bufferAfterMinutes: eventType.bufferAfterMinutes,
+    customQuestions: eventType.customQuestions,
     createdAt: eventType.createdAt,
     updatedAt: eventType.updatedAt,
     user: {
@@ -81,6 +84,19 @@ function eventPayload(
       email: eventType.user.email,
     },
   };
+}
+
+function mapOverrides(
+  schedule: {
+    overrides?: { date: string; type: string; startTime: string | null; endTime: string | null }[];
+  },
+) {
+  return (schedule.overrides ?? []).map((o) => ({
+    date: o.date,
+    type: o.type as "UNAVAILABLE" | "CUSTOM_HOURS",
+    startTime: o.startTime,
+    endTime: o.endTime,
+  }));
 }
 
 export function invalidateBootstrapCache() {
@@ -136,21 +152,27 @@ router.get("/bootstrap", async (req, res, next) => {
       durationMinutes: eventType.durationMinutes,
       timezone: schedule.timezone,
       rules: schedule.rules,
+      overrides: mapOverrides(schedule),
       bookings,
+      bufferBeforeMinutes: eventType.bufferBeforeMinutes,
+      bufferAfterMinutes: eventType.bufferAfterMinutes,
     });
 
     const slotsByDate: Record<string, ReturnType<typeof computeDaySlots>> = {};
-    for (const dateStr of availableDates) {
-      slotsByDate[dateStr] = computeDaySlots({
-        date: dateStr,
+    const selectedDate = availableDates[0] ?? null;
+    if (selectedDate) {
+      slotsByDate[selectedDate] = computeDaySlots({
+        date: selectedDate,
         durationMinutes: eventType.durationMinutes,
         timezone: schedule.timezone,
         rules: schedule.rules,
+        overrides: mapOverrides(schedule),
         bookings,
+        bufferBeforeMinutes: eventType.bufferBeforeMinutes,
+        bufferAfterMinutes: eventType.bufferAfterMinutes,
       });
     }
 
-    const selectedDate = availableDates[0] ?? null;
     const slots = selectedDate ? (slotsByDate[selectedDate] ?? []) : [];
 
     const body = {
@@ -206,7 +228,10 @@ router.get("/", async (req, res, next) => {
         durationMinutes: eventType.durationMinutes,
         timezone: schedule.timezone,
         rules: schedule.rules,
+        overrides: mapOverrides(schedule),
         bookings,
+        bufferBeforeMinutes: eventType.bufferBeforeMinutes,
+        bufferAfterMinutes: eventType.bufferAfterMinutes,
       });
 
       return res.json({
@@ -243,7 +268,10 @@ router.get("/", async (req, res, next) => {
       durationMinutes: eventType.durationMinutes,
       timezone: schedule.timezone,
       rules: schedule.rules,
+      overrides: mapOverrides(schedule),
       bookings,
+      bufferBeforeMinutes: eventType.bufferBeforeMinutes,
+      bufferAfterMinutes: eventType.bufferAfterMinutes,
     });
 
     res.json({ slots, timezone: schedule.timezone });

@@ -18,6 +18,7 @@ function formatWhen(iso: string): string {
 
 interface Props {
   booking: BookingListItem;
+  isLast?: boolean;
   showCancel: boolean;
   showCancelledBadge?: boolean;
   cancelling: boolean;
@@ -26,6 +27,7 @@ interface Props {
 
 export function BookingRow({
   booking,
+  isLast = false,
   showCancel,
   showCancelledBadge = false,
   cancelling,
@@ -36,28 +38,27 @@ export function BookingRow({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between",
+        "group flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-accent sm:flex-row sm:items-center sm:justify-between",
+        !isLast && "border-b border-border",
         cancelled && "opacity-70",
       )}
     >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className={cn("font-medium text-gray-900", cancelled && "line-through")}>
+          <span className={cn("font-medium text-foreground", cancelled && "line-through")}>
             {booking.attendeeName}
           </span>
           {showCancelledBadge && cancelled && (
-            <span className="rounded bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-600">
+            <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">
               Cancelled
             </span>
           )}
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">
-            {booking.eventType.title}
-          </span>
-          <span className="text-xs text-gray-400">/book/{booking.eventType.slug}</span>
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="text-sm font-medium text-foreground">{booking.eventType.title}</span>
+          <span className="text-sm text-muted-foreground">/book/{booking.eventType.slug}</span>
         </div>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" />
             {formatWhen(booking.startTime)}
@@ -76,7 +77,7 @@ export function BookingRow({
           size="sm"
           disabled={cancelling}
           onClick={() => onCancel(booking.id)}
-          className="shrink-0 border-red-200 text-red-600 hover:bg-red-50"
+          className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10"
         >
           <X className="h-4 w-4" />
           {cancelling ? "Cancelling…" : "Cancel"}

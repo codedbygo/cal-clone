@@ -3,19 +3,58 @@ import { addMinutes } from "date-fns";
 import prisma, { prismaDirect } from "../lib/db";
 import { getDefaultUserId } from "../lib/constants";
 import { invalidateBootstrapCache } from "./slots";
+import { expandBookingWithBuffer } from "../services/slots";
 import { ApiError } from "../middleware/errorHandler";
 import {
   validateAttendeeEmail,
   validateAttendeeName,
+  validateBookingAnswers,
   validateBookingFilter,
   validateBookingStartTime,
   validateBookingStatus,
+  validateCustomQuestions,
   validateEventTypeId,
 } from "../lib/validate";
 
 const router = Router();
 
-// GET /api/bookings?filter=upcoming|past|cancelled — host dashboard list
+async function assertNoOverlap(
+  eventTypeId: string,
+  startTime: Date,
+  endTime: Date,
+  bufferBefore: number,
+  bufferAfter: number,
+  excludeBookingId?: string,
+) {
+  const conflicts = await prisma.booking.findMany({
+    where: {
+      eventTypeId,
+      status: "CONFIRMED",
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+      startTime: { lt: endTime },
+      endTime: { gt: startTime },
+    },
+    select: { startTime: true, endTime: true },
+  });
+
+  const candidate = expandBookingWithBuffer(
+    { startTime, endTime },
+    bufferBefore,
+    bufferAfter,
+  );
+
+  for (const c of conflicts) {
+    const blocked = expandBookingWithBuffer(c, bufferBefore, bufferAfter);
+    if (
+      candidate.startTime < blocked.endTime &&
+      candidate.endTime > blocked.startTime
+    ) {
+      throw new ApiError(409, "SLOT_TAKEN", "This time slot is no longer available");
+    }
+  }
+}
+
+// GET /api/bookings?filter=upcoming|past|cancelled
 router.get("/", async (req, res, next) => {
   try {
     const userId = await getDefaultUserId();
@@ -36,8 +75,7 @@ router.get("/", async (req, res, next) => {
         ...statusWhere,
       },
       orderBy: {
-        startTime:
-          filter === "upcoming" ? "asc" : "desc",
+        startTime: filter === "upcoming" ? "asc" : "desc",
       },
       include: {
         eventType: {
@@ -52,7 +90,7 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-// POST /api/bookings — create with overlap check (409 SLOT_TAKEN)
+// POST /api/bookings
 router.post("/", async (req, res, next) => {
   try {
     const eventTypeId = validateEventTypeId(req.body.eventTypeId);
@@ -66,6 +104,11 @@ router.post("/", async (req, res, next) => {
     if (!eventType || eventType.hidden) {
       throw new ApiError(404, "NOT_FOUND", "Event type not found");
     }
+
+    const questions = validateCustomQuestions(
+      Array.isArray(eventType.customQuestions) ? eventType.customQuestions : [],
+    );
+    const answers = validateBookingAnswers(questions, req.body.answers);
 
     const endTime = addMinutes(startTime, eventType.durationMinutes);
 
@@ -90,6 +133,7 @@ router.post("/", async (req, res, next) => {
           startTime,
           endTime,
           status: "CONFIRMED",
+          answers: answers as object,
         },
       });
     });
@@ -102,7 +146,7 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-// GET /api/bookings/:id — confirmation page (includes event type details)
+// GET /api/bookings/:id
 router.get("/:id", async (req, res, next) => {
   try {
     const booking = await prisma.booking.findUnique({
@@ -113,6 +157,7 @@ router.get("/:id", async (req, res, next) => {
             title: true,
             durationMinutes: true,
             slug: true,
+            customQuestions: true,
             user: { select: { name: true, email: true } },
           },
         },
@@ -127,17 +172,60 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
-// PATCH /api/bookings/:id — cancel (status → CANCELLED)
+// PATCH /api/bookings/:id — cancel (host) or reschedule (new startTime)
 router.patch("/:id", async (req, res, next) => {
   try {
+    const existing = await prisma.booking.findUnique({
+      where: { id: req.params.id },
+      include: {
+        eventType: {
+          select: {
+            userId: true,
+            durationMinutes: true,
+            bufferBeforeMinutes: true,
+            bufferAfterMinutes: true,
+          },
+        },
+      },
+    });
+    if (!existing) {
+      throw new ApiError(404, "NOT_FOUND", "Booking not found");
+    }
+
+    if (req.body.startTime !== undefined) {
+      if (existing.status !== "CONFIRMED") {
+        throw new ApiError(400, "VALIDATION", "Only confirmed bookings can be rescheduled");
+      }
+      const startTime = validateBookingStartTime(req.body.startTime);
+      const endTime = addMinutes(startTime, existing.eventType.durationMinutes);
+
+      await assertNoOverlap(
+        existing.eventTypeId,
+        startTime,
+        endTime,
+        existing.eventType.bufferBeforeMinutes,
+        existing.eventType.bufferAfterMinutes,
+        existing.id,
+      );
+
+      const booking = await prisma.booking.update({
+        where: { id: existing.id },
+        data: { startTime, endTime },
+        include: {
+          eventType: {
+            select: { title: true, durationMinutes: true, slug: true },
+          },
+        },
+      });
+
+      invalidateBootstrapCache();
+      return res.json(booking);
+    }
+
     const userId = await getDefaultUserId();
     validateBookingStatus(req.body.status);
 
-    const existing = await prisma.booking.findUnique({
-      where: { id: req.params.id },
-      include: { eventType: { select: { userId: true } } },
-    });
-    if (!existing || existing.eventType.userId !== userId) {
+    if (existing.eventType.userId !== userId) {
       throw new ApiError(404, "NOT_FOUND", "Booking not found");
     }
 
