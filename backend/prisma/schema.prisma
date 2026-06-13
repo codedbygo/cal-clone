@@ -20,7 +20,7 @@ model User {
   createdAt DateTime @default(now())
 
   eventTypes EventType[]
-  schedule   AvailabilitySchedule?
+  schedules  AvailabilitySchedule[]
 }
 
 model EventType {
@@ -43,15 +43,17 @@ model EventType {
 
 model AvailabilitySchedule {
   id        String   @id @default(cuid())
-  // Unique FK = exactly one schedule per user in v1.
-  // "Multiple schedules" bonus: drop unique, add name, FK from EventType.
-  userId    String   @unique
+  userId    String
+  name      String   @default("Working hours")
+  isDefault Boolean  @default(false)
   // Authoritative timezone: rule HH:mm values are wall-clock in this zone
   timezone  String   @default("Asia/Kolkata")
   updatedAt DateTime @updatedAt
 
   user  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   rules AvailabilityRule[]
+
+  @@index([userId])
 }
 
 model AvailabilityRule {

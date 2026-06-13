@@ -81,3 +81,40 @@ export function formatBookingSlotSummary(
 export function getCalVideoPath(bookingId: string): string {
   return `/booking/video?id=${encodeURIComponent(bookingId)}`;
 }
+
+const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+function formatTime12h(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+  if (m === 0) return `${hour12}:00 ${period}`;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+function formatDayRange(days: number[]): string {
+  if (days.length === 0) return "";
+  if (days.length === 1) return DAY_SHORT[days[0]!]!;
+  const sorted = [...days].sort((a, b) => a - b);
+  return `${DAY_SHORT[sorted[0]!]!} - ${DAY_SHORT[sorted[sorted.length - 1]!]!}`;
+}
+
+/** Client-side preview of schedule summary while editing. */
+export function formatScheduleSummary(
+  rules: { dayOfWeek: number; startTime: string; endTime: string }[],
+): string {
+  if (rules.length === 0) return "No hours set";
+  const byWindow = new Map<string, number[]>();
+  for (const r of rules) {
+    const key = `${r.startTime}-${r.endTime}`;
+    const days = byWindow.get(key) ?? [];
+    days.push(r.dayOfWeek);
+    byWindow.set(key, days);
+  }
+  return Array.from(byWindow.entries())
+    .map(([window, days]) => {
+      const [start, end] = window.split("-");
+      return `${formatDayRange(days)}, ${formatTime12h(start!)} - ${formatTime12h(end!)}`;
+    })
+    .join(" · ");
+}

@@ -83,3 +83,28 @@ export interface CreateBookingInput {
   attendeeEmail: string;
   startTime: string;
 }
+
+export interface AvailabilityRule {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}
+
+export interface AvailabilitySchedule {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  timezone: string;
+  summary: string;
+  rules: AvailabilityRule[];
+}
+
+export interface CreateAvailabilityInput {
+  name: string;
+}
+
+export interface UpdateAvailabilityInput {
+  name?: string;
+  timezone: string;
+  rules: AvailabilityRule[];
+}

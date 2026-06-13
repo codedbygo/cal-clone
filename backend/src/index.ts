@@ -7,6 +7,7 @@ import { getDefaultUserId } from "./lib/constants";
 import eventTypesRouter from "./routes/eventTypes";
 import slotsRouter from "./routes/slots";
 import bookingsRouter from "./routes/bookings";
+import availabilityRouter from "./routes/availability";
 import { errorHandler } from "./middleware/errorHandler";
 
 async function warmupDatabase() {
@@ -30,7 +31,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/event-types", eventTypesRouter);
 app.use("/api/slots", slotsRouter);
-// app.use("/api/availability", availabilityRouter);  // Task 2.3
+app.use("/api/availability", availabilityRouter);
 app.use("/api/bookings", bookingsRouter);
 
 // Central error handler — must be registered after all routes

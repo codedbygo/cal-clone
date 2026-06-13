@@ -96,3 +96,72 @@ export function validateBookingStatus(status: unknown): "CANCELLED" {
   }
   return "CANCELLED";
 }
+
+export function validateScheduleName(name: unknown): string {
+  if (typeof name !== "string") invalid("name: must be a string");
+  const n = name.trim();
+  if (n.length < 1 || n.length > 80) invalid("name: must be 1–80 characters");
+  return n;
+}
+
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export function validateTimeString(value: unknown, field: string): string {
+  if (typeof value !== "string" || !TIME_RE.test(value)) {
+    invalid(`${field}: must be HH:mm (24-hour)`);
+  }
+  return value;
+}
+
+export function validateTimezone(timezone: unknown): string {
+  if (typeof timezone !== "string" || !timezone.trim()) {
+    invalid("timezone: required");
+  }
+  const tz = timezone.trim();
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return tz;
+  } catch {
+    invalid("timezone: must be a valid IANA timezone");
+  }
+}
+
+export interface AvailabilityRuleInput {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}
+
+export function validateAvailabilityRules(rules: unknown): AvailabilityRuleInput[] {
+  if (!Array.isArray(rules)) invalid("rules: must be an array");
+
+  const seen = new Set<number>();
+  const result: AvailabilityRuleInput[] = [];
+
+  for (const entry of rules) {
+    if (typeof entry !== "object" || entry === null) {
+      invalid("rules: each entry must be an object");
+    }
+    const raw = entry as Record<string, unknown>;
+    const dayOfWeek = raw.dayOfWeek;
+    if (
+      typeof dayOfWeek !== "number" ||
+      !Number.isInteger(dayOfWeek) ||
+      dayOfWeek < 0 ||
+      dayOfWeek > 6
+    ) {
+      invalid("dayOfWeek: must be an integer 0–6 (0 = Sunday)");
+    }
+    if (seen.has(dayOfWeek)) invalid("rules: duplicate dayOfWeek");
+    seen.add(dayOfWeek);
+
+    const startTime = validateTimeString(raw.startTime, "startTime");
+    const endTime = validateTimeString(raw.endTime, "endTime");
+    if (startTime >= endTime) {
+      invalid("startTime must be before endTime for each rule");
+    }
+    result.push({ dayOfWeek, startTime, endTime });
+  }
+
+  return result;
+}

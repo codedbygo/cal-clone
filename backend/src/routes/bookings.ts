@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { addMinutes } from "date-fns";
-import prisma from "../lib/db";
+import prisma, { prismaDirect } from "../lib/db";
 import { getDefaultUserId } from "../lib/constants";
 import { invalidateBootstrapCache } from "./slots";
 import { ApiError } from "../middleware/errorHandler";
@@ -69,7 +69,7 @@ router.post("/", async (req, res, next) => {
 
     const endTime = addMinutes(startTime, eventType.durationMinutes);
 
-    const booking = await prisma.$transaction(async (tx) => {
+    const booking = await prismaDirect.$transaction(async (tx) => {
       const conflict = await tx.booking.findFirst({
         where: {
           eventTypeId,

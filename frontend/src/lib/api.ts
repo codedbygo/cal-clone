@@ -8,6 +8,9 @@ import type {
   BookingBootstrapResponse,
   BookingFilter,
   BookingListItem,
+  AvailabilitySchedule,
+  CreateAvailabilityInput,
+  UpdateAvailabilityInput,
   MonthAvailabilityResponse,
   SlotsResponse,
 } from "./types";
@@ -243,5 +246,50 @@ export function cancelBooking(id: string): Promise<BookingListItem> {
   return request<BookingListItem>(`/bookings/${id}`, {
     method: "PATCH",
     body: JSON.stringify({ status: "CANCELLED" }),
+  });
+}
+
+export function getAvailabilitySchedules(): Promise<AvailabilitySchedule[]> {
+  return request<AvailabilitySchedule[]>("/availability");
+}
+
+export function getAvailabilitySchedule(
+  id: string,
+): Promise<AvailabilitySchedule> {
+  return request<AvailabilitySchedule>(`/availability/${id}`);
+}
+
+export function createAvailabilitySchedule(
+  data: CreateAvailabilityInput,
+): Promise<AvailabilitySchedule> {
+  invalidateBookingBootstrapCache();
+  return request<AvailabilitySchedule>("/availability", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateAvailabilitySchedule(
+  id: string,
+  data: UpdateAvailabilityInput,
+): Promise<AvailabilitySchedule> {
+  invalidateBookingBootstrapCache();
+  return request<AvailabilitySchedule>(`/availability/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteAvailabilitySchedule(id: string): Promise<void> {
+  invalidateBookingBootstrapCache();
+  return request<void>(`/availability/${id}`, { method: "DELETE" });
+}
+
+export function setDefaultAvailabilitySchedule(
+  id: string,
+): Promise<AvailabilitySchedule> {
+  invalidateBookingBootstrapCache();
+  return request<AvailabilitySchedule>(`/availability/${id}/default`, {
+    method: "PATCH",
   });
 }

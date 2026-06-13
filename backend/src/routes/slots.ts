@@ -1,5 +1,6 @@
 import { Router } from "express";
 import prisma from "../lib/db";
+import { resolveBookingSchedule } from "../lib/resolveSchedule";
 import { getDefaultUserId } from "../lib/constants";
 import { ApiError } from "../middleware/errorHandler";
 import {
@@ -27,7 +28,7 @@ async function loadEventWithSchedule(slug: string, preview: boolean) {
         select: {
           name: true,
           email: true,
-          schedule: { include: { rules: true } },
+          schedules: { include: { rules: true } },
         },
       },
     },
@@ -47,7 +48,7 @@ async function loadEventForBootstrap(slug: string, preview: boolean) {
         select: {
           name: true,
           email: true,
-          schedule: { include: { rules: true } },
+          schedules: { include: { rules: true } },
         },
       },
       bookings: {
@@ -107,7 +108,7 @@ router.get("/bootstrap", async (req, res, next) => {
     }
 
     const eventType = await loadEventForBootstrap(slug, preview);
-    const schedule = eventType.user.schedule;
+    const schedule = resolveBookingSchedule(eventType.user.schedules);
 
     if (!schedule) {
       const body = {
@@ -182,7 +183,7 @@ router.get("/", async (req, res, next) => {
     }
 
     const eventType = await loadEventWithSchedule(slug, preview);
-    const schedule = eventType.user.schedule;
+    const schedule = resolveBookingSchedule(eventType.user.schedules);
 
     if (typeof month === "string" && MONTH_RE.test(month)) {
       if (!schedule) {
