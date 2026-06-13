@@ -84,7 +84,8 @@ export function getCalVideoPath(bookingId: string): string {
 
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-function formatTime12h(hhmm: string): string {
+/** e.g. "9:00am" */
+export function formatTime12h(hhmm: string): string {
   const [h, m] = hhmm.split(":").map(Number);
   const period = h >= 12 ? "PM" : "AM";
   const hour12 = h % 12 || 12;

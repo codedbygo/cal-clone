@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import type { AvailabilityRule } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, formatTime12h } from "@/lib/utils";
 
 /** Mon → Sun (Cal.com order); values match JS Date.getDay(). */
 export const WEEKDAYS: { dayOfWeek: number; label: string }[] = [
@@ -59,14 +59,6 @@ export function draftToRules(days: DayDraft[]): AvailabilityRule[] {
       startTime,
       endTime,
     }));
-}
-
-function formatTime12h(hhmm: string): string {
-  const [h, m] = hhmm.split(":").map(Number);
-  const period = h >= 12 ? "pm" : "am";
-  const hour12 = h % 12 || 12;
-  if (m === 0) return `${hour12}:00${period}`;
-  return `${hour12}:${String(m).padStart(2, "0")}${period}`;
 }
 
 const TIME_OPTIONS = (() => {
