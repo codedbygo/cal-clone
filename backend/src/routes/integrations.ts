@@ -9,6 +9,7 @@ import {
 import { getGoogleAuthUrl, handleGoogleCallback, revokeGoogleToken } from "../services/integrations/googleOAuth";
 import { getZoomAuthUrl, handleZoomCallback, revokeZoomToken } from "../services/integrations/zoomOAuth";
 import { frontendAppsUrl, verifyOAuthState } from "../services/integrations/oauthState";
+import { invalidateBootstrapCache } from "./slots";
 
 const router = Router();
 
@@ -74,6 +75,7 @@ router.get("/:provider/callback", async (req, res, next) => {
       await handleZoomCallback(code, verified.userId);
     }
 
+    invalidateBootstrapCache();
     res.redirect(frontendAppsUrl({ connected: provider }));
   } catch (err) {
     console.error("OAuth callback error:", err);
@@ -100,6 +102,7 @@ router.delete("/:provider", async (req, res, next) => {
     }
 
     await disconnectIntegration(userId, provider === "google" ? "GOOGLE" : "ZOOM");
+    invalidateBootstrapCache();
     res.status(204).send();
   } catch (err) {
     next(err);

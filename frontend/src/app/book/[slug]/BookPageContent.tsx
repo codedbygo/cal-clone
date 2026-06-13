@@ -21,7 +21,7 @@ import {
   rescheduleBooking,
   ApiClientError,
 } from "@/lib/api";
-import type { BookingBootstrapResponse, CustomQuestion, EventTypeWithHost, Slot } from "@/lib/types";
+import type { BookingBootstrapResponse, CustomQuestion, EventTypeWithHost, MeetingProvider, Slot } from "@/lib/types";
 
 interface Props {
   slug: string;
@@ -38,6 +38,7 @@ export function BookPageContent({ slug }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const [timezone, setTimezone] = useState("Asia/Kolkata");
+  const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>("CAL_VIDEO");
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [availableDates, setAvailableDates] = useState<Set<string>>(new Set());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -64,6 +65,7 @@ export function BookPageContent({ slug }: Props) {
   const applyBootstrap = useCallback((data: BookingBootstrapResponse) => {
     setEvent(data.event);
     setTimezone(data.timezone);
+    setMeetingProvider(data.preferredMeetingProvider ?? "CAL_VIDEO");
     setAvailableDates(new Set(data.availableDates));
     slotsByDateRef.current = data.slotsByDate ?? {};
     const date = data.selectedDate ? parseISO(data.selectedDate) : null;
@@ -204,6 +206,7 @@ export function BookPageContent({ slug }: Props) {
                 <BookingEventInfo
                   event={event}
                   timezone={timezone}
+                  meetingProvider={meetingProvider}
                   selectedDayLabel={
                     showingForm && selectedDate
                       ? formatSelectedDay(selectedDate)

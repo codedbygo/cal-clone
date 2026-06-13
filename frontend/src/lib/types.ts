@@ -54,6 +54,7 @@ export interface MonthAvailabilityResponse {
 export interface BookingBootstrapResponse {
   event: EventTypeWithHost;
   timezone: string;
+  preferredMeetingProvider: MeetingProvider;
   availableDates: string[];
   selectedDate: string | null;
   slots: Slot[];

@@ -1,10 +1,11 @@
 import { Calendar, Clock, Globe, Video } from "lucide-react";
-import type { EventTypeWithHost } from "@/lib/types";
-import { formatBookingSlotSummary } from "@/lib/utils";
+import type { EventTypeWithHost, MeetingProvider } from "@/lib/types";
+import { formatBookingSlotSummary, meetingProviderLabel } from "@/lib/utils";
 
 interface Props {
   event: EventTypeWithHost;
   timezone: string;
+  meetingProvider?: MeetingProvider;
   selectedDayLabel?: string;
   selectedStartTime?: string;
   selectedEndTime?: string;
@@ -13,6 +14,7 @@ interface Props {
 export function BookingEventInfo({
   event,
   timezone,
+  meetingProvider = "CAL_VIDEO",
   selectedDayLabel,
   selectedStartTime,
   selectedEndTime,
@@ -59,7 +61,7 @@ export function BookingEventInfo({
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Video className="h-4 w-4 shrink-0" />
-          <span>Cal Video</span>
+          <span>{meetingProviderLabel(meetingProvider)}</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Globe className="h-4 w-4 shrink-0" />

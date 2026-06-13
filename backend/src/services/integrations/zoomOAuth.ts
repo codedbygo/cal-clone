@@ -10,6 +10,12 @@ const ZOOM_AUTH = "https://zoom.us/oauth/authorize";
 const ZOOM_TOKEN = "https://zoom.us/oauth/token";
 const ZOOM_USER = "https://api.zoom.us/v2/users/me";
 
+const ZOOM_SCOPES = [
+  "user:read",
+  "meeting:write:meeting",
+  "meeting:write:meeting:admin",
+].join(" ");
+
 export function getZoomAuthUrl(userId: string): string {
   if (!isZoomConfigured()) {
     throw new ApiError(
@@ -26,6 +32,7 @@ export function getZoomAuthUrl(userId: string): string {
     response_type: "code",
     client_id: process.env.ZOOM_CLIENT_ID!,
     redirect_uri: redirectUri,
+    scope: ZOOM_SCOPES,
     state,
   });
   return `${ZOOM_AUTH}?${params.toString()}`;

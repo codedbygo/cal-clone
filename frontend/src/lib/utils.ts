@@ -125,6 +125,13 @@ export function meetingJoinLabel(provider?: string): string {
   return "Join Cal Video";
 }
 
+/** Display label for meeting location (sidebar, confirmation) */
+export function meetingProviderLabel(provider?: string): string {
+  if (provider === "GOOGLE_MEET") return "Google Meet";
+  if (provider === "ZOOM") return "Zoom";
+  return "Cal Video";
+}
+
 /** Resolve join URL — external link or in-app video page */
 export function resolveMeetingUrl(
   bookingId: string,

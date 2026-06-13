@@ -11,10 +11,34 @@ const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO = "https://www.googleapis.com/oauth2/v2/userinfo";
 
 const SCOPES = [
-  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/calendar",
   "email",
   "profile",
 ].join(" ");
+
+async function verifyGoogleCalendarAccess(accessToken: string): Promise<void> {
+  const tokenInfoRes = await fetch(
+    `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${encodeURIComponent(accessToken)}`,
+  );
+  if (tokenInfoRes.ok) {
+    const info = (await tokenInfoRes.json()) as { scope?: string };
+    const scopes = info.scope ?? "";
+    if (!scopes.includes("calendar")) {
+      throw new Error(
+        "Google connection is missing Calendar permission. Disconnect and reconnect, then allow Calendar access.",
+      );
+    }
+  }
+
+  const calRes = await fetch(
+    "https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1",
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!calRes.ok) {
+    const body = await calRes.text();
+    throw new Error(`Google Calendar access check failed: ${body}`);
+  }
+}
 
 export function getGoogleAuthUrl(userId: string): string {
   if (!isGoogleConfigured()) {
@@ -35,6 +59,7 @@ export function getGoogleAuthUrl(userId: string): string {
     scope: SCOPES,
     access_type: "offline",
     prompt: "consent",
+    include_granted_scopes: "true",
     state,
   });
   return `${GOOGLE_AUTH}?${params.toString()}`;
@@ -79,6 +104,8 @@ export async function handleGoogleCallback(
     const user = (await userRes.json()) as { email?: string };
     accountEmail = user.email ?? null;
   }
+
+  await verifyGoogleCalendarAccess(tokens.access_token);
 
   await upsertIntegrationTokens(userId, "GOOGLE", {
     accessToken: tokens.access_token,

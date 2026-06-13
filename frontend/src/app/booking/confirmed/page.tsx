@@ -9,6 +9,7 @@ import type { BookingWithEvent } from "@/lib/types";
 import {
   formatBookingDate,
   formatBookingTimeRange,
+  meetingProviderLabel,
   resolveMeetingUrl,
 } from "@/lib/utils";
 import { ConfirmationPageSkeleton } from "@/components/booking/ConfirmationPageSkeleton";
@@ -150,12 +151,7 @@ function ConfirmedContent() {
                 {(() => {
                   const joinUrl = resolveMeetingUrl(booking.id, booking.meetingUrl);
                   const external = joinUrl.startsWith("http");
-                  const label =
-                    booking.meetingProvider === "GOOGLE_MEET"
-                      ? "Google Meet"
-                      : booking.meetingProvider === "ZOOM"
-                        ? "Zoom"
-                        : "Cal Video";
+                  const label = meetingProviderLabel(booking.meetingProvider);
                   return (
                     <Link
                       href={joinUrl}

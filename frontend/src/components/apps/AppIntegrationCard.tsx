@@ -21,6 +21,7 @@ export function AppIntegrationCard({
   onDisconnect,
 }: Props) {
   const connected = integration.status === "CONNECTED";
+  const needsReconnect = integration.status === "ERROR";
 
   return (
     <div className="flex flex-col rounded-xl border border-border bg-card p-6 shadow-sm">
@@ -34,6 +35,11 @@ export function AppIntegrationCard({
             <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
               {integration.category}
             </span>
+            {needsReconnect && (
+              <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-500">
+                Reconnect required
+              </span>
+            )}
             {connected && (
               <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-500">
                 Connected
@@ -43,6 +49,11 @@ export function AppIntegrationCard({
           <p className="mt-2 text-sm text-muted-foreground">{integration.description}</p>
           {connected && integration.accountEmail && (
             <p className="mt-2 text-xs text-muted-foreground">{integration.accountEmail}</p>
+          )}
+          {needsReconnect && (
+            <p className="mt-2 text-xs text-amber-500">
+              Permissions changed or expired. Disconnect and connect again to grant Calendar/Meeting access.
+            </p>
           )}
           {!integration.configured && (
             <p className="mt-2 text-xs text-amber-500">
@@ -70,7 +81,7 @@ export function AppIntegrationCard({
             onClick={onConnect}
           >
             <Plug className="h-4 w-4" />
-            {connecting ? "Redirecting…" : "Connect"}
+            {connecting ? "Redirecting…" : needsReconnect ? "Reconnect" : "Connect"}
           </Button>
         )}
       </div>

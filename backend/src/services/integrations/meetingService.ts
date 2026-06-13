@@ -3,6 +3,7 @@ import type { MeetingProvider } from "@prisma/client";
 import {
   getConnectedIntegration,
   getValidAccessToken,
+  markIntegrationError,
 } from "./integrationStore";
 import { createGoogleCalendarEvent, deleteGoogleCalendarEvent, updateGoogleCalendarEvent } from "./googleCalendar";
 import { createZoomMeeting, deleteZoomMeeting, updateZoomMeeting } from "./zoomMeetings";
@@ -19,7 +20,23 @@ async function resolveTimezone(userId: string): Promise<string> {
   return schedule?.timezone ?? "Asia/Kolkata";
 }
 
-export async function createMeetingForBooking(bookingId: string): Promise<void> {
+function logIntegrationError(provider: string, err: unknown): void {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(`[meeting] ${provider} failed:`, message);
+}
+
+function isInsufficientScopeError(message: string): boolean {
+  return (
+    message.includes("insufficientPermissions") ||
+    message.includes("ACCESS_TOKEN_SCOPE_INSUFFICIENT") ||
+    message.includes("Insufficient Permission") ||
+    message.includes("does not contain scopes")
+  );
+}
+
+export async function createMeetingForBooking(
+  bookingId: string,
+): Promise<MeetingProvider> {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
     include: {
@@ -28,7 +45,7 @@ export async function createMeetingForBooking(bookingId: string): Promise<void> 
       },
     },
   });
-  if (!booking || booking.status !== "CONFIRMED") return;
+  if (!booking || booking.status !== "CONFIRMED") return "CAL_VIDEO";
 
   const userId = booking.eventType.userId;
   const timezone = await resolveTimezone(userId);
@@ -56,10 +73,14 @@ export async function createMeetingForBooking(bookingId: string): Promise<void> 
             externalEventId: result.externalEventId,
           },
         });
-        return;
+        return "GOOGLE_MEET";
       }
     } catch (err) {
-      console.error("Google meeting creation failed:", err);
+      logIntegrationError("Google Meet", err);
+      const message = err instanceof Error ? err.message : String(err);
+      if (isInsufficientScopeError(message)) {
+        await markIntegrationError(userId, "GOOGLE");
+      }
     }
   }
 
@@ -82,10 +103,14 @@ export async function createMeetingForBooking(bookingId: string): Promise<void> 
             externalEventId: result.externalEventId,
           },
         });
-        return;
+        return "ZOOM";
       }
     } catch (err) {
-      console.error("Zoom meeting creation failed:", err);
+      logIntegrationError("Zoom", err);
+      const message = err instanceof Error ? err.message : String(err);
+      if (isInsufficientScopeError(message)) {
+        await markIntegrationError(userId, "ZOOM");
+      }
     }
   }
 
@@ -97,6 +122,7 @@ export async function createMeetingForBooking(bookingId: string): Promise<void> 
       externalEventId: null,
     },
   });
+  return "CAL_VIDEO";
 }
 
 export async function updateMeetingForBooking(bookingId: string): Promise<void> {
@@ -125,11 +151,12 @@ export async function updateMeetingForBooking(bookingId: string): Promise<void> 
           title,
           startTime: booking.startTime,
           endTime: booking.endTime,
+          attendeeEmail: booking.attendeeEmail,
           timezone,
         });
         return;
       } catch (err) {
-        console.error("Google meeting update failed:", err);
+        logIntegrationError("Google Meet update", err);
       }
     }
   }
@@ -146,7 +173,7 @@ export async function updateMeetingForBooking(bookingId: string): Promise<void> 
         });
         return;
       } catch (err) {
-        console.error("Zoom meeting update failed:", err);
+        logIntegrationError("Zoom update", err);
       }
     }
   }

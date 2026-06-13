@@ -9,6 +9,10 @@ import {
   deleteMeetingForBooking,
   updateMeetingForBooking,
 } from "../services/integrations/meetingService";
+import {
+  sendBookingConfirmationEmail,
+  sendBookingRescheduleEmail,
+} from "../services/email/sendBookingEmails";
 import { ApiError } from "../middleware/errorHandler";
 import {
   validateAttendeeEmail,
@@ -22,6 +26,25 @@ import {
 } from "../lib/validate";
 
 const router = Router();
+
+const bookingDetailInclude = {
+  eventType: {
+    select: {
+      title: true,
+      durationMinutes: true,
+      slug: true,
+      customQuestions: true,
+      user: { select: { name: true, email: true } },
+    },
+  },
+} as const;
+
+async function loadBookingDetail(id: string) {
+  return prisma.booking.findUnique({
+    where: { id },
+    include: bookingDetailInclude,
+  });
+}
 
 async function assertNoOverlap(
   eventTypeId: string,
@@ -149,9 +172,13 @@ router.post("/", async (req, res, next) => {
     });
 
     invalidateBootstrapCache();
-    void createMeetingForBooking(booking.id);
+    await createMeetingForBooking(booking.id);
+    const updated = await loadBookingDetail(booking.id);
+    if (updated) {
+      void sendBookingConfirmationEmail(updated);
+    }
 
-    res.status(201).json(booking);
+    res.status(201).json(updated ?? booking);
   } catch (err) {
     next(err);
   }
@@ -162,17 +189,7 @@ router.get("/:id", async (req, res, next) => {
   try {
     const booking = await prisma.booking.findUnique({
       where: { id: req.params.id },
-      include: {
-        eventType: {
-          select: {
-            title: true,
-            durationMinutes: true,
-            slug: true,
-            customQuestions: true,
-            user: { select: { name: true, email: true } },
-          },
-        },
-      },
+      include: bookingDetailInclude,
     });
     if (!booking) {
       throw new ApiError(404, "NOT_FOUND", "Booking not found");
@@ -219,19 +236,20 @@ router.patch("/:id", async (req, res, next) => {
         existing.id,
       );
 
+      const previousStartTime = existing.startTime;
+
       const booking = await prisma.booking.update({
         where: { id: existing.id },
         data: { startTime, endTime },
-        include: {
-          eventType: {
-            select: { title: true, durationMinutes: true, slug: true },
-          },
-        },
       });
 
       invalidateBootstrapCache();
-      void updateMeetingForBooking(booking.id);
-      return res.json(booking);
+      await updateMeetingForBooking(booking.id);
+      const updated = await loadBookingDetail(booking.id);
+      if (updated) {
+        void sendBookingRescheduleEmail(updated, previousStartTime);
+      }
+      return res.json(updated ?? booking);
     }
 
     const userId = await getDefaultUserId();

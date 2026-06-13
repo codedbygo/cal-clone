@@ -8,6 +8,7 @@ import {
   computeMonthAvailability,
   monthRangeUtc,
 } from "../services/availability";
+import { resolvePreferredMeetingProvider } from "../services/integrations/integrationStore";
 
 const router = Router();
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -124,12 +125,16 @@ router.get("/bootstrap", async (req, res, next) => {
     }
 
     const eventType = await loadEventForBootstrap(slug, preview);
+    const preferredMeetingProvider = await resolvePreferredMeetingProvider(
+      eventType.userId,
+    );
     const schedule = resolveBookingSchedule(eventType.user.schedules);
 
     if (!schedule) {
       const body = {
         event: eventPayload(eventType),
         timezone: "Asia/Kolkata",
+        preferredMeetingProvider,
         availableDates: [],
         selectedDate: null,
         slots: [],
@@ -178,6 +183,7 @@ router.get("/bootstrap", async (req, res, next) => {
     const body = {
       event: eventPayload(eventType),
       timezone: schedule.timezone,
+      preferredMeetingProvider,
       availableDates,
       selectedDate,
       slots,

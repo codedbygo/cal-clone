@@ -114,6 +114,27 @@ export async function disconnectIntegration(
   });
 }
 
+export async function markIntegrationError(
+  userId: string,
+  provider: IntegrationProvider,
+): Promise<void> {
+  await prisma.integration.updateMany({
+    where: { userId, provider, status: "CONNECTED" },
+    data: { status: "ERROR" },
+  });
+}
+
+export async function resolvePreferredMeetingProvider(
+  userId: string,
+): Promise<"GOOGLE_MEET" | "ZOOM" | "CAL_VIDEO"> {
+  const integrations = await listIntegrations(userId);
+  const google = integrations.find((i) => i.provider === "GOOGLE");
+  if (google?.status === "CONNECTED") return "GOOGLE_MEET";
+  const zoom = integrations.find((i) => i.provider === "ZOOM");
+  if (zoom?.status === "CONNECTED") return "ZOOM";
+  return "CAL_VIDEO";
+}
+
 export async function getValidAccessToken(
   userId: string,
   provider: IntegrationProvider,

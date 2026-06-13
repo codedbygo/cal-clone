@@ -82,6 +82,7 @@ Open [http://localhost:3000/event-types](http://localhost:3000/event-types).
 | **Custom questions** | Optional fields on event types; answers stored on booking |
 | **Dark mode** | Default dark theme; toggle in admin sidebar |
 | **Apps integrations** | Google Calendar/Meet + Zoom OAuth at `/apps` |
+| **Email notifications** | SMTP confirmation + reschedule emails (optional) |
 | **Insights dashboard** | Booking analytics, routing, utilization, call history at `/insights/*` |
 
 ### Assignment checklist
@@ -131,7 +132,7 @@ Open [http://localhost:3000/event-types](http://localhost:3000/event-types).
 4. **Slot step = event duration** — a 30-minute event produces 30-minute slots.
 5. **UTC storage, local rules** — bookings stored as UTC; availability as `HH:mm` in schedule timezone.
 6. **Soft cancel** — cancelled bookings kept with `status: CANCELLED`; slot becomes bookable again.
-7. **No email notifications** — confirmation shown in-app only (assignment scope).
+7. **Email notifications (optional)** — SMTP sends confirmation and reschedule emails when configured; Google Calendar also sends invites when Google is connected.
 8. **Neon connection split** — `DATABASE_URL` (pooled) for queries; `DIRECT_URL` (direct) for migrations and booking transactions.
 
 ---
@@ -287,6 +288,59 @@ OAUTH_STATE_SECRET=your-random-secret
 ```
 
 Restart the backend after adding credentials, then click **Connect** on the Apps page.
+
+**If you see `insufficient authentication scopes` in logs:** disconnect Google/Zoom on `/apps`, then connect again. Older connections may lack Calendar or meeting permissions. After reconnecting, Google will prompt for Calendar access.
+
+**Zoom app scopes:** In the [Zoom Marketplace](https://marketplace.zoom.us/) app settings, add scopes `meeting:write:meeting`, `meeting:write:meeting:admin`, and `user:read`, then reconnect.
+
+### Meeting location priority
+
+New bookings use the host's connected apps in this order:
+
+1. **Google Meet** — if Google Calendar is connected
+2. **Zoom** — if Zoom is connected (and Google is not)
+3. **Cal Video** — in-app fallback when neither is connected
+
+The booking page sidebar shows the expected provider before confirmation. Meeting links are created **before** the API responds, so the confirmation page always shows the final provider.
+
+### Production checklist (Google Meet still showing Cal Video?)
+
+Set these on your **Vercel backend** project (not the frontend):
+
+| Variable | Notes |
+| -------- | ----- |
+| `GOOGLE_CLIENT_ID` | From Google Cloud Console |
+| `GOOGLE_CLIENT_SECRET` | From Google Cloud Console |
+| `GOOGLE_REDIRECT_URI` | Must match backend URL, e.g. `https://cal-clone-phi.vercel.app/api/integrations/google/callback` |
+| `FRONTEND_URL` | Your frontend URL, e.g. `https://cal-clone-9eg7.vercel.app` |
+
+Also verify in Google Cloud Console:
+
+- **Google Calendar API** is enabled for the project
+- OAuth redirect URI exactly matches `GOOGLE_REDIRECT_URI`
+- Re-connect Google from `/apps` after changing redirect URIs (old tokens may be invalid)
+
+Check Vercel backend logs for `[meeting] Google Meet failed:` if bookings still fall back to Cal Video.
+
+---
+
+## Email notifications (SMTP)
+
+When SMTP env vars are set, the backend sends confirmation emails on new bookings and update emails on reschedule (to guest and host).
+
+Add to `backend/.env`:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+EMAIL_FROM="Cal Clone <your-email@gmail.com>"
+```
+
+For Gmail, use an [App Password](https://support.google.com/accounts/answer/185833), not your regular password.
+
+If SMTP is not configured, bookings still succeed — emails are skipped with a log warning. When Google Calendar is connected, Google also sends calendar invites to the guest (`sendUpdates=all`).
 
 ---
 

@@ -19,7 +19,7 @@ export async function createGoogleCalendarEvent(
   const requestId = randomUUID();
 
   const res = await fetch(
-    "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1",
+    "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all",
     {
       method: "POST",
       headers: {
@@ -95,11 +95,12 @@ export async function updateGoogleCalendarEvent(
     title: string;
     startTime: Date;
     endTime: Date;
+    attendeeEmail: string;
     timezone: string;
   },
 ): Promise<void> {
   const res = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`,
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}?sendUpdates=all`,
     {
       method: "PATCH",
       headers: {
@@ -116,6 +117,7 @@ export async function updateGoogleCalendarEvent(
           dateTime: input.endTime.toISOString(),
           timeZone: input.timezone,
         },
+        attendees: [{ email: input.attendeeEmail }],
       }),
     },
   );
