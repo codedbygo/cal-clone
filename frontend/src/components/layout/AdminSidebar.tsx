@@ -134,15 +134,15 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="space-y-0.5 border-t border-border p-2">
-        <a
-          href={publicUrl}
+        <Link
+          href="/book"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <ExternalLink className="h-4 w-4" />
           View public page
-        </a>
+        </Link>
         <button
           type="button"
           onClick={() => void handleCopyPublicLink()}

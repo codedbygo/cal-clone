@@ -5,6 +5,7 @@ import type {
   EventType,
   EventTypeInput,
   EventTypeWithHost,
+  PublicHostProfile,
   BookingBootstrapResponse,
   BookingFilter,
   BookingListItem,
@@ -106,6 +107,10 @@ export function getEventBySlug(
 ): Promise<EventTypeWithHost> {
   const q = preview ? "?preview=1" : "";
   return request<EventTypeWithHost>(`/event-types/slug/${slug}${q}`);
+}
+
+export function getPublicHostProfile(): Promise<PublicHostProfile> {
+  return request<PublicHostProfile>("/event-types/public");
 }
 
 function slotsQuery(

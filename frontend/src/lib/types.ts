@@ -24,6 +24,19 @@ export interface EventTypeWithHost extends EventType {
   user: { name: string; email?: string };
 }
 
+export interface PublicEventTypeSummary {
+  id: string;
+  title: string;
+  description: string;
+  durationMinutes: number;
+  slug: string;
+}
+
+export interface PublicHostProfile {
+  user: { name: string; email: string };
+  eventTypes: PublicEventTypeSummary[];
+}
+
 export interface EventTypeInput {
   title: string;
   description?: string;

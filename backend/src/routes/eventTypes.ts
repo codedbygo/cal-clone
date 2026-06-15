@@ -15,6 +15,34 @@ import {
 
 const router = Router();
 
+// GET /api/event-types/public — host profile + visible event types (public booking index)
+router.get("/public", async (_req, res, next) => {
+  try {
+    const userId = await getDefaultUserId();
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, email: true },
+    });
+    if (!user) {
+      throw new ApiError(404, "NOT_FOUND", "Host not found");
+    }
+    const eventTypes = await prisma.eventType.findMany({
+      where: { userId, hidden: false },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        durationMinutes: true,
+        slug: true,
+      },
+    });
+    res.json({ user, eventTypes });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/event-types — all event types for default host (incl. hidden)
 router.get("/", async (_req, res, next) => {
   try {
