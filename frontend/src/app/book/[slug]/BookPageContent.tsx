@@ -27,11 +27,31 @@ interface Props {
   slug: string;
 }
 
+function buildBookingPath(
+  slug: string,
+  params: {
+    preview?: boolean;
+    reschedule?: string | null;
+    date?: string | null;
+    slot?: string | null;
+  },
+): string {
+  const q = new URLSearchParams();
+  if (params.preview) q.set("preview", "1");
+  if (params.reschedule) q.set("reschedule", params.reschedule);
+  if (params.date) q.set("date", params.date);
+  if (params.slot) q.set("slot", params.slot);
+  const qs = q.toString();
+  return `/book/${slug}${qs ? `?${qs}` : ""}`;
+}
+
 export function BookPageContent({ slug }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isPreviewParam = searchParams.get("preview") === "1";
   const rescheduleId = searchParams.get("reschedule");
+  const urlDate = searchParams.get("date");
+  const urlSlot = searchParams.get("slot");
   const needsPreviewApi = isPreviewParam;
 
   const [event, setEvent] = useState<EventTypeWithHost | null>(null);
@@ -62,19 +82,33 @@ export function BookPageContent({ slug }: Props) {
     ? event.customQuestions
     : [];
 
+  const pushBookingUrl = useCallback(
+    (patch: { date?: string | null; slot?: string | null }, replace = false) => {
+      const nextDate =
+        patch.date === undefined ? urlDate : patch.date;
+      const nextSlot =
+        patch.slot === undefined ? urlSlot : patch.slot;
+      const path = buildBookingPath(slug, {
+        preview: needsPreviewApi,
+        reschedule: rescheduleId,
+        date: nextDate,
+        slot: nextSlot,
+      });
+      if (replace) {
+        router.replace(path, { scroll: false });
+      } else {
+        router.push(path, { scroll: false });
+      }
+    },
+    [slug, needsPreviewApi, rescheduleId, urlDate, urlSlot, router],
+  );
+
   const applyBootstrap = useCallback((data: BookingBootstrapResponse) => {
     setEvent(data.event);
     setTimezone(data.timezone);
     setMeetingProvider(data.preferredMeetingProvider ?? "CAL_VIDEO");
     setAvailableDates(new Set(data.availableDates));
     slotsByDateRef.current = data.slotsByDate ?? {};
-    const date = data.selectedDate ? parseISO(data.selectedDate) : null;
-    setSelectedDate(date);
-    if (date) {
-      setSlots(slotsByDateRef.current[toDateKey(date)] ?? data.slots);
-    } else {
-      setSlots([]);
-    }
   }, []);
 
   useEffect(() => {
@@ -100,23 +134,90 @@ export function BookPageContent({ slug }: Props) {
       .finally(() => setCalendarLoading(false));
   }, [slug, monthKey, needsPreviewApi, applyBootstrap]);
 
-  function handleSelectDate(date: Date) {
-    setSelectedDate(date);
-    setSelectedSlot(null);
-    const key = toDateKey(date);
-    const cached = slotsByDateRef.current[key];
-    if (cached) {
-      setSlots(cached);
+  const loadSlotsForDate = useCallback(
+    async (dateKey: string) => {
+      const cached = slotsByDateRef.current[dateKey];
+      if (cached) {
+        setSlots(cached);
+        return cached;
+      }
+      setSlotsLoading(true);
+      try {
+        const { slots: daySlots } = await getSlots(slug, dateKey, needsPreviewApi);
+        slotsByDateRef.current[dateKey] = daySlots;
+        setSlots(daySlots);
+        return daySlots;
+      } catch {
+        setSlots([]);
+        return [];
+      } finally {
+        setSlotsLoading(false);
+      }
+    },
+    [slug, needsPreviewApi],
+  );
+
+  useEffect(() => {
+    if (calendarLoading) return;
+
+    if (!urlDate) {
+      setSelectedDate(null);
+      setSelectedSlot(null);
+      setSlots([]);
       return;
     }
-    setSlotsLoading(true);
-    void getSlots(slug, key, needsPreviewApi)
-      .then(({ slots: daySlots }) => {
-        slotsByDateRef.current[key] = daySlots;
-        setSlots(daySlots);
-      })
-      .catch(() => setSlots([]))
-      .finally(() => setSlotsLoading(false));
+
+    let cancelled = false;
+    const date = parseISO(urlDate);
+    if (Number.isNaN(date.getTime())) {
+      setSelectedDate(null);
+      setSelectedSlot(null);
+      setSlots([]);
+      return;
+    }
+
+    setSelectedDate(date);
+    setMonth(startOfMonth(date));
+
+    void loadSlotsForDate(urlDate).then((daySlots) => {
+      if (cancelled) return;
+      if (urlSlot) {
+        const match = daySlots.find((s) => s.startTime === urlSlot) ?? null;
+        setSelectedSlot(match);
+      } else {
+        setSelectedSlot(null);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [urlDate, urlSlot, calendarLoading, loadSlotsForDate]);
+
+  function handleSelectDate(date: Date) {
+    const key = toDateKey(date);
+    pushBookingUrl({ date: key, slot: null });
+  }
+
+  function handleSelectSlot(slot: Slot) {
+    if (!selectedDate) return;
+    pushBookingUrl({ date: toDateKey(selectedDate), slot: slot.startTime });
+  }
+
+  function handleBack() {
+    if (selectedSlot) {
+      if (selectedDate) {
+        pushBookingUrl({ date: toDateKey(selectedDate), slot: null }, true);
+      } else {
+        setSelectedSlot(null);
+      }
+      return;
+    }
+    if (selectedDate) {
+      pushBookingUrl({ date: null, slot: null }, true);
+      return;
+    }
+    router.push("/book");
   }
 
   async function handleFormSubmit() {
@@ -140,6 +241,10 @@ export function BookPageContent({ slug }: Props) {
     } catch (err) {
       if (err instanceof ApiClientError && err.code === "SLOT_TAKEN") {
         setFormError("That time was just taken. Please pick another slot.");
+        if (selectedDate) {
+          delete slotsByDateRef.current[toDateKey(selectedDate)];
+          void loadSlotsForDate(toDateKey(selectedDate));
+        }
       } else {
         setFormError(err instanceof Error ? err.message : "Booking failed");
       }
@@ -154,31 +259,42 @@ export function BookPageContent({ slug }: Props) {
         <p className="text-lg font-medium text-foreground">Event not found</p>
         <p className="mt-1 text-sm text-muted-foreground">{error}</p>
         <Link
-          href="/event-types"
+          href="/book"
           className="mt-4 text-sm text-muted-foreground hover:text-foreground hover:underline"
         >
-          ← Back to dashboard
+          ← Back to events
         </Link>
       </div>
     );
   }
 
   const showingForm = Boolean(selectedSlot && selectedDate);
+  const showBackNav = Boolean(selectedDate);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {showingForm && (
-        <div className="px-6 py-4">
+      <div className="px-6 py-4">
+        {showBackNav ? (
           <button
             type="button"
-            onClick={() => setSelectedSlot(null)}
+            onClick={handleBack}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
-            Back to {isReschedule ? "reschedule" : "booking"}
+            {showingForm
+              ? "Back to time slots"
+              : "Back to calendar"}
           </button>
-        </div>
-      )}
+        ) : (
+          <Link
+            href="/book"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            All events
+          </Link>
+        )}
+      </div>
 
       <div className="px-4 pb-8">
         {isReschedule && (
@@ -232,9 +348,7 @@ export function BookPageContent({ slug }: Props) {
                     loading={calendarLoading && availableDates.size === 0}
                     onMonthChange={(m) => {
                       setMonth(startOfMonth(m));
-                      setSelectedDate(null);
-                      setSlots([]);
-                      setSelectedSlot(null);
+                      pushBookingUrl({ date: null, slot: null }, true);
                       slotsByDateRef.current = {};
                       setCalendarLoading(true);
                     }}
@@ -247,7 +361,7 @@ export function BookPageContent({ slug }: Props) {
                     loading={slotsLoading || (calendarLoading && slots.length === 0)}
                     timezone={timezone}
                     selectedSlot={selectedSlot}
-                    onSelect={setSelectedSlot}
+                    onSelect={handleSelectSlot}
                   />
                 </>
               )}
@@ -264,7 +378,7 @@ export function BookPageContent({ slug }: Props) {
                     setGuestEmail(email);
                   }}
                   readOnlyGuest={isReschedule}
-                  onBack={() => setSelectedSlot(null)}
+                  onBack={handleBack}
                   onSubmit={handleFormSubmit}
                   submitting={submitting}
                   error={formError}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import { EventTypeForm } from "@/components/event-types/EventTypeForm";
 import { EventTypeRow } from "@/components/event-types/EventTypeRow";
@@ -17,7 +18,9 @@ import {
 import type { EventType, EventTypeInput } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export default function EventTypesPage() {
+function EventTypesContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -40,6 +43,43 @@ export default function EventTypesPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const dialogParam = searchParams.get("dialog");
+  const editId = searchParams.get("edit");
+
+  useEffect(() => {
+    if (dialogParam === "new") {
+      setEditing(null);
+      setFormOpen(true);
+      return;
+    }
+    if (editId && eventTypes.length > 0) {
+      const match = eventTypes.find((et) => et.id === editId);
+      if (match) {
+        setEditing(match);
+        setFormOpen(true);
+      }
+      return;
+    }
+    if (!dialogParam && !editId) {
+      setFormOpen(false);
+      setEditing(null);
+    }
+  }, [dialogParam, editId, eventTypes]);
+
+  function openCreateDialog() {
+    router.push("/event-types?dialog=new");
+  }
+
+  function openEditDialog(event: EventType) {
+    router.push(`/event-types?edit=${event.id}`);
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditing(null);
+    router.replace("/event-types");
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -100,12 +140,7 @@ export default function EventTypesPage() {
               className="w-48 pl-9 sm:w-56"
             />
           </div>
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
-          >
+          <Button onClick={openCreateDialog}>
             <Plus className="h-4 w-4" />
             New
           </Button>
@@ -141,13 +176,7 @@ export default function EventTypesPage() {
             {search ? "No event types match your search." : "No event types yet."}
           </p>
           {!search && (
-            <Button
-              className="mt-4"
-              onClick={() => {
-                setEditing(null);
-                setFormOpen(true);
-              }}
-            >
+            <Button className="mt-4" onClick={openCreateDialog}>
               <Plus className="h-4 w-4" />
               Create your first event type
             </Button>
@@ -164,10 +193,7 @@ export default function EventTypesPage() {
               bookingPath={`/book/${et.slug}`}
               isLast={index === filtered.length - 1}
               onToggle={handleToggle}
-              onEdit={(e) => {
-                setEditing(e);
-                setFormOpen(true);
-              }}
+              onEdit={openEditDialog}
               onDelete={handleDelete}
             />
           ))}
@@ -177,12 +203,17 @@ export default function EventTypesPage() {
       <EventTypeForm
         open={formOpen}
         event={editing}
-        onClose={() => {
-          setFormOpen(false);
-          setEditing(null);
-        }}
+        onClose={closeForm}
         onSubmit={editing ? handleUpdate : handleCreate}
       />
     </AdminPageShell>
+  );
+}
+
+export default function EventTypesPage() {
+  return (
+    <Suspense fallback={null}>
+      <EventTypesContent />
+    </Suspense>
   );
 }
